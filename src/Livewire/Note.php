@@ -11,13 +11,13 @@ class Note extends Component
 {
     public NotesNote $note;
     public string $content = '';
-    public string $viewMode = 'split'; // 'edit', 'preview', 'split'
-    public bool $autoSave = true;
+    public string $name = '';
 
     public function mount(NotesNote $notesNote)
     {
         $this->note = $notesNote;
         $this->content = $this->note->content ?? '';
+        $this->name = $this->note->name;
         
         // Berechtigung prüfen
         $this->authorize('view', $this->note);
@@ -28,13 +28,17 @@ class Note extends Component
     {
         $this->note->refresh();
         $this->content = $this->note->content ?? '';
+        $this->name = $this->note->name;
     }
 
     public function updatedContent()
     {
-        if ($this->autoSave) {
-            $this->save(true);
-        }
+        $this->save(true);
+    }
+
+    public function updatedName()
+    {
+        $this->save(true);
     }
 
     public function save($silent = false)
@@ -42,19 +46,16 @@ class Note extends Component
         $this->authorize('update', $this->note);
         
         $this->note->update([
+            'name' => $this->name,
             'content' => $this->content,
         ]);
 
         if (!$silent) {
-            session()->flash('message', 'Notiz gespeichert.');
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Gespeichert',
+            ]);
         }
-    }
-
-    public function toggleViewMode()
-    {
-        $modes = ['split', 'edit', 'preview'];
-        $currentIndex = array_search($this->viewMode, $modes);
-        $this->viewMode = $modes[($currentIndex + 1) % count($modes)];
     }
 
     public function getBreadcrumbs()

@@ -19,69 +19,60 @@
         </x-ui-page-navbar>
     </x-slot>
 
-    <x-ui-page-container spacing="space-y-6">
+    <x-ui-page-container class="max-w-4xl mx-auto">
         {{-- Header Section --}}
-        <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm overflow-hidden">
-            <div class="p-6 lg:p-8">
-                <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                        <h1 class="text-3xl font-bold text-[var(--ui-secondary)] mb-4 tracking-tight leading-tight">{{ $folder->name }}</h1>
-                        @if($folder->description)
-                            <p class="text-[var(--ui-secondary)] text-lg">{{ $folder->description }}</p>
-                        @endif
-                    </div>
-                    @can('update', $folder)
-                        <div class="flex items-center gap-2">
-                            <x-ui-button variant="secondary-outline" size="sm" wire:click="createSubFolder">
-                                <span class="inline-flex items-center gap-2">
-                                    @svg('heroicon-o-folder-plus', 'w-4 h-4')
-                                    <span>Unterordner</span>
-                                </span>
-                            </x-ui-button>
-                            <x-ui-button variant="primary" size="sm" wire:click="createNote">
-                                <span class="inline-flex items-center gap-2">
-                                    @svg('heroicon-o-plus', 'w-4 h-4')
-                                    <span>Notiz</span>
-                                </span>
-                            </x-ui-button>
-                        </div>
-                    @endcan
+        <div class="mb-8">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                    <h1 class="text-4xl font-bold text-[var(--ui-secondary)] mb-2" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;">{{ $folder->name }}</h1>
+                    @if($folder->description)
+                        <p class="text-[var(--ui-muted)] text-lg">{{ $folder->description }}</p>
+                    @endif
                 </div>
+                @can('update', $folder)
+                    <div class="flex items-center gap-2">
+                        <button 
+                            wire:click="createSubFolder"
+                            class="px-4 py-2 text-sm rounded-lg border border-[var(--ui-border)] hover:bg-[var(--ui-muted-5)] transition-colors flex items-center gap-2"
+                        >
+                            @svg('heroicon-o-folder-plus', 'w-4 h-4')
+                            <span>Ordner</span>
+                        </button>
+                        <button 
+                            wire:click="createNote"
+                            class="px-4 py-2 text-sm rounded-lg bg-[var(--ui-primary)] text-[var(--ui-on-primary)] hover:opacity-90 transition-opacity flex items-center gap-2"
+                        >
+                            @svg('heroicon-o-plus', 'w-4 h-4')
+                            <span>Notiz</span>
+                        </button>
+                    </div>
+                @endcan
             </div>
         </div>
 
         {{-- Unterordner Section --}}
         @if($subFolders->count() > 0 || auth()->user()->can('update', $folder))
-            <div>
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-semibold text-[var(--ui-secondary)] flex items-center gap-2">
-                        @svg('heroicon-o-folder', 'w-5 h-5')
-                        <span>Unterordner</span>
-                        <span class="text-sm font-normal text-[var(--ui-muted)]">({{ $subFolders->count() }})</span>
-                    </h2>
-                </div>
-
+            <div class="mb-12">
                 @if($subFolders->count() > 0)
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div class="space-y-2">
                         @foreach($subFolders as $subFolder)
-                            <a href="{{ route('notes.folders.show', $subFolder) }}" wire:navigate class="block group">
-                                <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm hover:shadow-lg hover:border-[var(--ui-primary)]/40 transition-all p-6 h-full">
-                                    <div class="flex items-start gap-3 mb-3">
-                                        <div class="flex-shrink-0 w-10 h-10 bg-[var(--ui-primary-5)] rounded-lg flex items-center justify-center group-hover:bg-[var(--ui-primary-10)] transition-colors">
-                                            @svg('heroicon-o-folder', 'w-6 h-6 text-[var(--ui-primary)]')
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <h3 class="text-lg font-semibold text-[var(--ui-secondary)] mb-1 truncate">{{ $subFolder->name }}</h3>
-                                            @if($subFolder->description)
-                                                <p class="text-sm text-[var(--ui-muted)] line-clamp-2">{{ $subFolder->description }}</p>
-                                            @endif
-                                        </div>
+                            <a 
+                                href="{{ route('notes.folders.show', $subFolder) }}" 
+                                wire:navigate 
+                                class="block p-4 rounded-lg border border-[var(--ui-border)]/40 hover:border-[var(--ui-primary)]/40 hover:bg-[var(--ui-muted-5)] transition-all group"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center">
+                                        @svg('heroicon-o-folder', 'w-6 h-6 text-[var(--ui-primary)] group-hover:scale-110 transition-transform')
                                     </div>
-                                    
-                                    <div class="flex items-center gap-2 text-xs text-[var(--ui-muted)]">
-                                        <span>{{ $subFolder->children()->count() }} Ordner</span>
-                                        <span>•</span>
-                                        <span>{{ $subFolder->notes()->count() }} Notizen</span>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-lg font-semibold text-[var(--ui-secondary)] mb-1">{{ $subFolder->name }}</h3>
+                                        @if($subFolder->description)
+                                            <p class="text-sm text-[var(--ui-muted)]">{{ $subFolder->description }}</p>
+                                        @endif
+                                    </div>
+                                    <div class="flex-shrink-0 text-sm text-[var(--ui-muted)]">
+                                        {{ $subFolder->children()->count() + $subFolder->notes()->count() }} Einträge
                                     </div>
                                 </div>
                             </a>
@@ -89,18 +80,14 @@
                     </div>
                 @else
                     @can('update', $folder)
-                        <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm p-12 text-center">
-                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--ui-muted-5)] mb-4">
-                                @svg('heroicon-o-folder', 'w-8 h-8 text-[var(--ui-muted)]')
-                            </div>
-                            <h3 class="text-lg font-semibold text-[var(--ui-secondary)] mb-2">Noch keine Unterordner</h3>
-                            <p class="text-sm text-[var(--ui-muted)] mb-4">Erstelle deinen ersten Unterordner.</p>
-                            <x-ui-button variant="primary" size="sm" wire:click="createSubFolder">
-                                <span class="inline-flex items-center gap-2">
-                                    @svg('heroicon-o-plus', 'w-4 h-4')
-                                    <span>Unterordner erstellen</span>
-                                </span>
-                            </x-ui-button>
+                        <div class="text-center py-12 border border-dashed border-[var(--ui-border)] rounded-lg">
+                            <p class="text-sm text-[var(--ui-muted)] mb-4">Noch keine Unterordner</p>
+                            <button 
+                                wire:click="createSubFolder"
+                                class="text-sm text-[var(--ui-primary)] hover:underline"
+                            >
+                                Ersten Unterordner erstellen
+                            </button>
                         </div>
                     @endcan
                 @endif
@@ -109,54 +96,43 @@
 
         {{-- Notizen Section --}}
         <div>
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-semibold text-[var(--ui-secondary)] flex items-center gap-2">
-                    @svg('heroicon-o-document-text', 'w-5 h-5')
-                    <span>Notizen</span>
-                    <span class="text-sm font-normal text-[var(--ui-muted)]">({{ $notes->count() }})</span>
-                </h2>
-            </div>
-
             @if($notes->count() > 0)
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div class="space-y-2">
                     @foreach($notes as $note)
-                        <a href="{{ route('notes.notes.show', $note) }}" wire:navigate class="block group">
-                            <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm hover:shadow-lg hover:border-[var(--ui-primary)]/40 transition-all p-6 h-full">
-                                <div class="flex items-start gap-3 mb-3">
-                                    <div class="flex-shrink-0 w-10 h-10 bg-[var(--ui-primary-5)] rounded-lg flex items-center justify-center group-hover:bg-[var(--ui-primary-10)] transition-colors">
-                                        @svg('heroicon-o-document-text', 'w-6 h-6 text-[var(--ui-primary)]')
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <h3 class="text-lg font-semibold text-[var(--ui-secondary)] mb-1 truncate">{{ $note->name }}</h3>
-                                        @if($note->content)
-                                            <p class="text-sm text-[var(--ui-muted)] line-clamp-3">{{ strip_tags($note->content) }}</p>
-                                        @else
-                                            <p class="text-sm text-[var(--ui-muted)] italic">Leer</p>
-                                        @endif
-                                    </div>
+                        <a 
+                            href="{{ route('notes.notes.show', $note) }}" 
+                            wire:navigate 
+                            class="block p-4 rounded-lg border border-[var(--ui-border)]/40 hover:border-[var(--ui-primary)]/40 hover:bg-[var(--ui-muted-5)] transition-all group"
+                        >
+                            <div class="flex items-start gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center mt-1">
+                                    @svg('heroicon-o-document-text', 'w-5 h-5 text-[var(--ui-muted)] group-hover:text-[var(--ui-primary)] transition-colors')
                                 </div>
-                                
-                                <div class="flex items-center gap-2 text-xs text-[var(--ui-muted)]">
-                                    <span>{{ $note->updated_at->format('d.m.Y') }}</span>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-lg font-semibold text-[var(--ui-secondary)] mb-1">{{ $note->name }}</h3>
+                                    @if($note->content)
+                                        <p class="text-sm text-[var(--ui-muted)] line-clamp-2">{{ strip_tags(mb_substr($note->content, 0, 150)) }}</p>
+                                    @else
+                                        <p class="text-sm text-[var(--ui-muted)] italic">Leer</p>
+                                    @endif
+                                </div>
+                                <div class="flex-shrink-0 text-xs text-[var(--ui-muted)]">
+                                    {{ $note->updated_at->format('d.m.Y') }}
                                 </div>
                             </div>
                         </a>
                     @endforeach
                 </div>
             @else
-                <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm p-12 text-center">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--ui-muted-5)] mb-4">
-                        @svg('heroicon-o-document-text', 'w-8 h-8 text-[var(--ui-muted)]')
-                    </div>
-                    <h3 class="text-lg font-semibold text-[var(--ui-secondary)] mb-2">Noch keine Notizen</h3>
-                    <p class="text-sm text-[var(--ui-muted)] mb-4">Erstelle deine erste Notiz in diesem Ordner.</p>
+                <div class="text-center py-12 border border-dashed border-[var(--ui-border)] rounded-lg">
+                    <p class="text-sm text-[var(--ui-muted)] mb-4">Noch keine Notizen</p>
                     @can('update', $folder)
-                        <x-ui-button variant="primary" size="sm" wire:click="createNote">
-                            <span class="inline-flex items-center gap-2">
-                                @svg('heroicon-o-plus', 'w-4 h-4')
-                                <span>Notiz erstellen</span>
-                            </span>
-                        </x-ui-button>
+                        <button 
+                            wire:click="createNote"
+                            class="text-sm text-[var(--ui-primary)] hover:underline"
+                        >
+                            Erste Notiz erstellen
+                        </button>
                     @endcan
                 </div>
             @endif

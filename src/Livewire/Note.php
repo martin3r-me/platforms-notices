@@ -11,6 +11,8 @@ class Note extends Component
 {
     public NotesNote $note;
     public string $content = '';
+    public string $viewMode = 'split'; // 'edit', 'preview', 'split'
+    public bool $autoSave = true;
 
     public function mount(NotesNote $notesNote)
     {
@@ -28,7 +30,14 @@ class Note extends Component
         $this->content = $this->note->content ?? '';
     }
 
-    public function save()
+    public function updatedContent()
+    {
+        if ($this->autoSave) {
+            $this->save(true);
+        }
+    }
+
+    public function save($silent = false)
     {
         $this->authorize('update', $this->note);
         
@@ -36,7 +45,48 @@ class Note extends Component
             'content' => $this->content,
         ]);
 
-        session()->flash('message', 'Notiz gespeichert.');
+        if (!$silent) {
+            session()->flash('message', 'Notiz gespeichert.');
+        }
+    }
+
+    public function toggleViewMode()
+    {
+        $modes = ['split', 'edit', 'preview'];
+        $currentIndex = array_search($this->viewMode, $modes);
+        $this->viewMode = $modes[($currentIndex + 1) % count($modes)];
+    }
+
+    public function getBreadcrumbs()
+    {
+        $breadcrumbs = [
+            ['name' => 'Dashboard', 'url' => route('notes.dashboard')],
+        ];
+
+        if ($this->note->folder) {
+            $folder = $this->note->folder;
+            $path = [];
+            
+            // Pfad zum Root sammeln
+            while ($folder) {
+                array_unshift($path, $folder);
+                $folder = $folder->parent;
+            }
+            
+            foreach ($path as $f) {
+                $breadcrumbs[] = [
+                    'name' => $f->name,
+                    'url' => route('notes.folders.show', $f),
+                ];
+            }
+        }
+
+        $breadcrumbs[] = [
+            'name' => $this->note->name,
+            'url' => route('notes.notes.show', $this->note),
+        ];
+
+        return $breadcrumbs;
     }
 
     public function rendered()

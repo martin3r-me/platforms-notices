@@ -45,11 +45,28 @@
         </button>
     </div>
 
-    {{-- Abschnitt: Ordner --}}
+    {{-- Abschnitt: Ordner-Baum --}}
     <div>
         <div class="mt-2" x-show="!collapsed">
-            {{-- Ordner nur anzeigen, wenn welche vorhanden sind --}}
-            @if($folders->isNotEmpty())
+            @if($folderTree->isNotEmpty())
+                <x-ui-sidebar-list :label="'Ordner' . ($showAllFolders ? ' (' . $allFoldersCount . ')' : '')">
+                    @foreach($folderTree as $item)
+                        <x-ui-sidebar-item 
+                            :href="route('notes.folders.show', ['notesFolder' => $item['folder']])"
+                            :style="'padding-left: ' . (($item['level'] * 1.5) + 0.75) . 'rem;'"
+                        >
+                            @svg('heroicon-o-folder', 'w-5 h-5 flex-shrink-0 text-[var(--ui-secondary)]')
+                            <div class="flex-1 min-w-0 ml-2">
+                                <div class="truncate text-sm font-medium">{{ $item['folder']->name }}</div>
+                                @if($item['folder']->description)
+                                    <div class="truncate text-xs text-[var(--ui-muted)]">{{ mb_substr($item['folder']->description, 0, 30) }}...</div>
+                                @endif
+                            </div>
+                        </x-ui-sidebar-item>
+                    @endforeach
+                </x-ui-sidebar-list>
+            @elseif($folders->isNotEmpty())
+                {{-- Fallback: Nur Root-Ordner anzeigen --}}
                 <x-ui-sidebar-list :label="'Ordner' . ($showAllFolders ? ' (' . $allFoldersCount . ')' : '')">
                     @foreach($folders as $folder)
                         <x-ui-sidebar-item :href="route('notes.folders.show', ['notesFolder' => $folder])">
@@ -83,7 +100,7 @@
             @endif
 
             {{-- Keine Ordner --}}
-            @if($folders->isEmpty())
+            @if($folders->isEmpty() && $folderTree->isEmpty())
                 <div class="px-3 py-1 text-xs text-[var(--ui-muted)]">
                     @if($showAllFolders)
                         Keine Ordner

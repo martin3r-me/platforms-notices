@@ -111,6 +111,84 @@ class Folder extends Component
         ]);
     }
 
+    public function getBreadcrumbs()
+    {
+        $breadcrumbs = [
+            ['name' => 'Dashboard', 'url' => route('notes.dashboard')],
+        ];
+
+        $folder = $this->folder;
+        $path = [];
+        
+        // Pfad zum Root sammeln
+        while ($folder) {
+            array_unshift($path, $folder);
+            $folder = $folder->parent;
+        }
+        
+        foreach ($path as $f) {
+            $breadcrumbs[] = [
+                'name' => $f->name,
+                'url' => route('notes.folders.show', $f),
+            ];
+        }
+
+        return $breadcrumbs;
+    }
+
+    public function getFolderTree()
+    {
+        $user = Auth::user();
+        $team = $user->currentTeam;
+        
+        if (!$team) {
+            return collect();
+        }
+
+        // Alle Root-Ordner laden
+        $rootFolders = NotesFolder::where('team_id', $team->id)
+            ->whereNull('parent_id')
+            ->orderBy('name')
+            ->get();
+
+        return $this->buildFolderTree($rootFolders, $this->folder->id);
+    }
+
+    protected function buildFolderTree($folders, $activeFolderId, $level = 0)
+    {
+        $tree = collect();
+        
+        foreach ($folders as $folder) {
+            $tree->push([
+                'folder' => $folder,
+                'level' => $level,
+                'isActive' => $folder->id === $activeFolderId,
+                'hasChildren' => $folder->children()->count() > 0,
+            ]);
+            
+            // Rekursiv Unterordner hinzufügen, wenn aktiv oder wenn Unterordner aktiv ist
+            if ($folder->id === $activeFolderId || $this->hasActiveChild($folder, $activeFolderId)) {
+                $children = $folder->children()->orderBy('name')->get();
+                $tree = $tree->merge($this->buildFolderTree($children, $activeFolderId, $level + 1));
+            }
+        }
+        
+        return $tree;
+    }
+
+    protected function hasActiveChild($folder, $activeFolderId)
+    {
+        foreach ($folder->children as $child) {
+            if ($child->id === $activeFolderId) {
+                return true;
+            }
+            if ($this->hasActiveChild($child, $activeFolderId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function render()
     {
         $user = Auth::user();

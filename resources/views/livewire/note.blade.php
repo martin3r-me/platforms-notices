@@ -29,9 +29,13 @@
                     isSaving: false,
                     savedLabel: '—',
                     debounceTimer: null,
-                    init() {
+                    boot() {
                         const Editor = window.ToastUIEditor;
-                        if (!Editor) return;
+                        if (!Editor) return false;
+
+                        if (this.editor && typeof this.editor.destroy === 'function') {
+                            this.editor.destroy();
+                        }
 
                         this.editor = new Editor({
                             el: this.$refs.editorEl,
@@ -54,7 +58,8 @@
                             const md = this.editor.getMarkdown();
                             clearTimeout(this.debounceTimer);
                             this.debounceTimer = setTimeout(() => {
-                                $wire.set('content', md);
+                                // beim Tippen keine Requests
+                                $wire.set('content', md, false);
                                 this.savedLabel = 'Ungespeichert';
                             }, 900);
                         });
@@ -77,7 +82,7 @@
                             Livewire.on('notes-sync-editor', (payload) => {
                                 if (!payload || payload.noteId !== {{ (int) $note->id }}) return;
                                 if (typeof payload.name === 'string') {
-                                    $wire.set('name', payload.name);
+                                    $wire.set('name', payload.name, false);
                                 }
                                 if (typeof payload.content === 'string' && this.editor) {
                                     this.editor.setMarkdown(payload.content);
@@ -97,12 +102,19 @@
                         } else {
                             document.addEventListener('livewire:init', bindLivewire, { once: true });
                         }
+
+                        return true;
+                    },
+                    init() {
+                        if (!this.boot()) {
+                            window.addEventListener('toastui:ready', () => this.boot(), { once: true });
+                        }
                     },
                     saveNow() {
                         if (!this.editor) return;
                         this.isSaving = true;
                         const md = this.editor.getMarkdown();
-                        $wire.set('content', md);
+                        $wire.set('content', md, false);
                         $wire.save();
                     },
                 }"

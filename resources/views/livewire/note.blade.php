@@ -36,36 +36,10 @@
             </span>
         </div>
 
-        {{-- ToastUI Fallback Loader: wenn das Host-App-Bundle es nicht mitliefert --}}
-        <script>
-          (function () {
-            if (window.ToastUIEditor) return;
-            if (window.__toastui_loading) return;
-            window.__toastui_loading = true;
-
-            var cssHref = 'https://cdn.jsdelivr.net/npm/@toast-ui/editor@3.2.2/dist/toastui-editor.min.css';
-            var jsSrc  = 'https://cdn.jsdelivr.net/npm/@toast-ui/editor@3.2.2/dist/toastui-editor-all.min.js';
-
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = cssHref;
-            document.head.appendChild(link);
-
-            var script = document.createElement('script');
-            script.src = jsSrc;
-            script.async = true;
-            script.onload = function () {
-              // UMD export
-              if (!window.ToastUIEditor && window.toastui && window.toastui.Editor) {
-                window.ToastUIEditor = window.toastui.Editor;
-              }
-              window.dispatchEvent(new CustomEvent('toastui:ready'));
-            };
-            document.head.appendChild(script);
-          })();
-        </script>
-
         @can('update', $note)
+            {{-- Ensure Notes editor bundle is loaded --}}
+            @vite(['resources/js/notes-editor.js'])
+
             {{-- Bear/Obsidian-like Editor --}}
             <div
                 x-data="{

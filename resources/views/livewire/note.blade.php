@@ -37,9 +37,6 @@
         </div>
 
         @can('update', $note)
-            {{-- Ensure Notes editor bundle is loaded --}}
-            @vite(['resources/js/notes-editor.js'])
-
             {{-- Bear/Obsidian-like Editor --}}
             <div
                 x-data="{

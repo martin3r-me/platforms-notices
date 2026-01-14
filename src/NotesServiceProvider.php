@@ -66,6 +66,9 @@ class NotesServiceProvider extends ServiceProvider
 
         // Policies registrieren
         $this->registerPolicies();
+
+        // Tools registrieren (für LLM/AI)
+        $this->registerTools();
     }
     
     protected function registerLivewireComponents(): void
@@ -116,6 +119,22 @@ class NotesServiceProvider extends ServiceProvider
             if (class_exists($model) && class_exists($policy)) {
                 Gate::policy($model, $policy);
             }
+        }
+    }
+
+    /**
+     * Registriert Tools für das Notes-Modul
+     */
+    protected function registerTools(): void
+    {
+        try {
+            $registry = resolve(\Platform\Core\Tools\ToolRegistry::class);
+
+            $registry->register(new \Platform\Notes\Tools\CreateFolderTool());
+            $registry->register(new \Platform\Notes\Tools\CreateNoteTool());
+            $registry->register(new \Platform\Notes\Tools\UpdateNoteTool());
+        } catch (\Throwable $e) {
+            // Silent fail - Tool-Registry könnte nicht verfügbar sein
         }
     }
 }

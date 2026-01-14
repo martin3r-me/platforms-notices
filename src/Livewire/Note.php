@@ -29,19 +29,16 @@ class Note extends Component
         $this->note->refresh();
         $this->content = $this->note->content ?? '';
         $this->name = $this->note->name;
+
+        // Editor sync (wire:ignore)
+        $this->dispatch('notes-sync-editor', [
+            'noteId' => $this->note->id,
+            'name' => $this->name,
+            'content' => $this->content,
+        ]);
     }
 
-    public function updatedContent()
-    {
-        $this->save(true);
-    }
-
-    public function updatedName()
-    {
-        $this->save(true);
-    }
-
-    public function save($silent = false)
+    public function save()
     {
         $this->authorize('update', $this->note);
         
@@ -49,13 +46,13 @@ class Note extends Component
             'name' => $this->name,
             'content' => $this->content,
         ]);
+        $this->note->refresh();
 
-        if (!$silent) {
-            $this->dispatch('notify', [
-                'type' => 'success',
-                'message' => 'Gespeichert',
-            ]);
-        }
+        // Editor sync (wire:ignore) + UI can show "saved"
+        $this->dispatch('notes-saved', [
+            'noteId' => $this->note->id,
+            'savedAt' => now()->toIso8601String(),
+        ]);
     }
 
     public function getBreadcrumbs()

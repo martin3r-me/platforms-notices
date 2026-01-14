@@ -3,11 +3,12 @@
         <x-ui-page-navbar :title="$note->name" icon="heroicon-o-document-text">
             {{-- Breadcrumbs --}}
             <div class="flex items-center gap-2 text-sm text-[var(--ui-muted)] mt-1">
-                @foreach($this->getBreadcrumbs() as $index => $crumb)
+                @php($breadcrumbs = $this->getBreadcrumbs())
+                @foreach($breadcrumbs as $index => $crumb)
                     @if($index > 0)
                         @svg('heroicon-o-chevron-right', 'w-3 h-3')
                     @endif
-                    @if($index < count($this->getBreadcrumbs()) - 1)
+                    @if($index < count($breadcrumbs) - 1)
                         <a href="{{ $crumb['url'] }}" wire:navigate class="hover:text-[var(--ui-secondary)] transition-colors">
                             {{ $crumb['name'] }}
                         </a>
@@ -20,60 +21,132 @@
     </x-slot>
 
     <x-ui-page-container class="max-w-4xl mx-auto">
-        <div 
-            x-data="{
-                content: @entangle('content'),
-                name: @entangle('name'),
-                isEditing: false,
-                init() {
-                    // Auto-focus beim Laden
-                    this.$nextTick(() => {
-                        const editor = this.$refs.editor;
-                        if (editor && @can('update', $note)) {
-                            editor.focus();
-                        }
-                    });
-                }
-            }"
-            class="min-h-[calc(100vh-200px)]"
-        >
-            @can('update', $note)
-                {{-- Editor Mode --}}
-                <div class="space-y-6">
-                    {{-- Title Editor --}}
-                    <div>
-                        <input 
-                            type="text"
-                            wire:model.live.debounce.500ms="name"
-                            x-model="name"
-                            placeholder="Titel der Notiz..."
-                            class="w-full text-4xl font-bold bg-transparent border-0 focus:ring-0 focus:outline-none text-[var(--ui-secondary)] placeholder:text-[var(--ui-muted)] resize-none"
-                            style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;"
-                        />
-                    </div>
+        @can('update', $note)
+            {{-- Bear/Obsidian-like Editor --}}
+            <div
+                x-data="{
+                    editor: null,
+                    isSaving: false,
+                    savedLabel: '—',
+                    debounceTimer: null,
+                    init() {
+                        const Editor = window.ToastUIEditor;
+                        if (!Editor) return;
 
-                    {{-- Content Editor --}}
-                    <div class="relative">
-                        <textarea 
-                            x-ref="editor"
-                            wire:model.live.debounce.500ms="content"
-                            x-model="content"
-                            placeholder="# Überschrift&#10;&#10;Schreibe deine Notiz hier...&#10;&#10;- Liste&#10;- Punkt 2&#10;&#10;**Fett** und *kursiv*&#10;&#10;😀 Emojis funktionieren auch!"
-                            class="w-full min-h-[600px] p-0 bg-transparent border-0 focus:ring-0 focus:outline-none text-[var(--ui-secondary)] placeholder:text-[var(--ui-muted)] resize-none leading-relaxed"
-                            style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 17px; line-height: 1.7;"
-                        ></textarea>
+                        this.editor = new Editor({
+                            el: this.$refs.editorEl,
+                            height: '70vh',
+                            initialEditType: 'wysiwyg',
+                            previewStyle: 'tab', // no split
+                            hideModeSwitch: true,
+                            usageStatistics: false,
+                            placeholder: 'Schreibe los…  😀  / Überschriften, Listen, Checklists, Links, Code',
+                            toolbarItems: [
+                                ['heading', 'bold', 'italic', 'strike'],
+                                ['ul', 'ol', 'task', 'quote'],
+                                ['link', 'code', 'codeblock', 'hr'],
+                            ],
+                            initialValue: @js($content ?? ''),
+                        });
+
+                        // Sync Editor -> Livewire state (debounced, ohne DB-write)
+                        this.editor.on('change', () => {
+                            const md = this.editor.getMarkdown();
+                            clearTimeout(this.debounceTimer);
+                            this.debounceTimer = setTimeout(() => {
+                                $wire.set('content', md);
+                                this.savedLabel = 'Ungespeichert';
+                            }, 900);
+                        });
+
+                        // Ctrl/Cmd + S (nur einmal global; bei Navigation ersetzen)
+                        if (window.__notesKeydownHandler) {
+                            window.removeEventListener('keydown', window.__notesKeydownHandler);
+                        }
+                        window.__notesKeydownHandler = (e) => {
+                            const isSave = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's';
+                            if (!isSave) return;
+                            e.preventDefault();
+                            this.saveNow();
+                        };
+                        window.addEventListener('keydown', window.__notesKeydownHandler);
+
+                        // Livewire events (wire:ignore)
+                        const bindLivewire = () => {
+                            if (!window.Livewire) return;
+                            Livewire.on('notes-sync-editor', (payload) => {
+                                if (!payload || payload.noteId !== {{ (int) $note->id }}) return;
+                                if (typeof payload.name === 'string') {
+                                    $wire.set('name', payload.name);
+                                }
+                                if (typeof payload.content === 'string' && this.editor) {
+                                    this.editor.setMarkdown(payload.content);
+                                }
+                                this.savedLabel = '—';
+                            });
+
+                            Livewire.on('notes-saved', (payload) => {
+                                if (!payload || payload.noteId !== {{ (int) $note->id }}) return;
+                                this.savedLabel = 'Gespeichert';
+                                this.isSaving = false;
+                            });
+                        };
+
+                        if (window.Livewire) {
+                            bindLivewire();
+                        } else {
+                            document.addEventListener('livewire:init', bindLivewire, { once: true });
+                        }
+                    },
+                    saveNow() {
+                        if (!this.editor) return;
+                        this.isSaving = true;
+                        const md = this.editor.getMarkdown();
+                        $wire.set('content', md);
+                        $wire.save();
+                    },
+                }"
+                class="min-h-[calc(100vh-220px)]"
+            >
+                {{-- Title + tiny status --}}
+                <div class="flex items-start justify-between gap-4 mb-6">
+                    <input
+                        type="text"
+                        wire:model.defer="name"
+                        placeholder="Titel…"
+                        class="w-full text-4xl font-bold bg-transparent border-0 focus:ring-0 focus:outline-none text-[var(--ui-secondary)] placeholder:text-[var(--ui-muted)]"
+                        style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;"
+                    />
+
+                    <div class="flex items-center gap-3 flex-shrink-0 pt-2">
+                        <div class="text-xs text-[var(--ui-muted)]">
+                            <span x-text="savedLabel"></span>
+                            <span class="mx-1">·</span>
+                            <span>⌘S</span>
+                        </div>
+                        <button
+                            type="button"
+                            @click="saveNow()"
+                            class="px-3 py-1.5 text-sm rounded-lg border border-[var(--ui-border)] hover:bg-[var(--ui-muted-5)] transition-colors"
+                        >
+                            Speichern
+                        </button>
                     </div>
                 </div>
-            @else
-                {{-- Read-only View --}}
-                <div class="space-y-6 prose prose-lg max-w-none">
-                    <h1 class="text-4xl font-bold text-[var(--ui-secondary)] mb-8">{{ $note->name }}</h1>
-                    <div class="markdown-content">
-                        {!! \Illuminate\Support\Str::markdown($note->content ?? '') !!}
-                    </div>
+
+                <div class="notes-editor-shell">
+                    <div wire:ignore x-ref="editorEl"></div>
                 </div>
-            @endcan
-        </div>
+            </div>
+        @else
+            {{-- Read-only View --}}
+            <div class="space-y-6 prose prose-lg max-w-none">
+                <h1 class="text-4xl font-bold text-[var(--ui-secondary)] mb-8">{{ $note->name }}</h1>
+                <div class="markdown-content">
+                    {!! \Illuminate\Support\Str::markdown($note->content ?? '') !!}
+                </div>
+            </div>
+        @endcan
     </x-ui-page-container>
 
     <x-slot name="sidebar">
@@ -126,6 +199,28 @@
 
     @push('styles')
     <style>
+        /* Toast UI Editor: make it feel like Bear/Obsidian (clean, minimal) */
+        .notes-editor-shell .toastui-editor-defaultUI {
+            border: 1px solid var(--ui-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .notes-editor-shell .toastui-editor-toolbar {
+            background: color-mix(in srgb, var(--ui-muted-5) 70%, transparent);
+            border-bottom: 1px solid var(--ui-border);
+        }
+        .notes-editor-shell .toastui-editor-contents {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-size: 17px;
+            line-height: 1.7;
+        }
+        .notes-editor-shell .toastui-editor-defaultUI-toolbar button {
+            border-radius: 8px;
+        }
+        .notes-editor-shell .toastui-editor-mode-switch {
+            display: none !important; /* ensure no split/mode switch UI */
+        }
+
         /* Obsidian/Bear Style Markdown Rendering */
         .markdown-content {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;

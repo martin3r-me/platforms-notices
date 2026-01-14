@@ -1,23 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        <x-ui-page-navbar :title="$note->name" icon="heroicon-o-document-text">
-            {{-- Breadcrumbs --}}
-            <div class="flex items-center gap-2 text-sm text-[var(--ui-muted)] mt-1">
-                @php($breadcrumbs = $this->getBreadcrumbs())
-                @foreach($breadcrumbs as $index => $crumb)
-                    @if($index > 0)
-                        @svg('heroicon-o-chevron-right', 'w-3 h-3')
-                    @endif
-                    @if($index < count($breadcrumbs) - 1)
-                        <a href="{{ $crumb['url'] }}" wire:navigate class="hover:text-[var(--ui-secondary)] transition-colors">
-                            {{ $crumb['name'] }}
-                        </a>
-                    @else
-                        <span class="text-[var(--ui-secondary)] font-medium">{{ $crumb['name'] }}</span>
-                    @endif
-                @endforeach
-            </div>
-        </x-ui-page-navbar>
+        <x-ui-page-navbar :title="$note->name" icon="heroicon-o-document-text" />
     </x-slot>
 
     <x-ui-page-container class="max-w-4xl mx-auto">

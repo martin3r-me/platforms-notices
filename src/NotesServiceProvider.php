@@ -134,6 +134,8 @@ class NotesServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Notes\Tools\CreateNoteTool());
             $registry->register(new \Platform\Notes\Tools\UpdateNoteTool());
             $registry->register(new \Platform\Notes\Tools\PutNoteTool());
+            $registry->register(new \Platform\Notes\Tools\GetNoteTool());
+            $registry->register(new \Platform\Notes\Tools\EditNoteTool());
         } catch (\Throwable $e) {
             // Silent fail - Tool-Registry könnte nicht verfügbar sein
         }

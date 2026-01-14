@@ -23,7 +23,10 @@ class UpdateNoteTool implements ToolContract, ToolDependencyContract, ToolMetada
 
     public function getDescription(): string
     {
-        return 'PATCH /notes/notes/{id} - Aktualisiert eine Notiz. Parameter: id (required), name (optional), content (optional markdown).';
+        return 'PATCH /notes/notes/{id} - Aktualisiert eine Notiz (direktes Setzen einzelner Felder). '
+            . 'Parameter: id (required), name (optional), content (optional markdown). '
+            . 'WICHTIG: Sende niemals content=null; null wird ignoriert. '
+            . 'Für sichere Teil-Änderungen (append/replace/section) nutze notes.notes.EDIT.';
     }
 
     public function getSchema(): array

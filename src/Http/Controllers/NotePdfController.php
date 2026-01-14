@@ -25,6 +25,9 @@ class NotePdfController extends Controller
             ->toString();
 
         return Pdf::loadHTML($html)
+            // DejaVu Sans hilft bei vielen Unicode-Zeichen (teilweise auch Emoji in schwarz/weiß)
+            ->setOption('defaultFont', 'DejaVu Sans')
+            ->setOption('isHtml5ParserEnabled', true)
             ->setPaper('a4')
             ->download($filename);
     }

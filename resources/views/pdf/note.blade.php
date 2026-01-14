@@ -7,7 +7,8 @@
     <style>
         @page { margin: 18mm 16mm; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            /* DomPDF: bevorzugt Fonts die wirklich auf dem Server verfügbar sind */
+            font-family: "DejaVu Sans", Arial, sans-serif;
             font-size: 12pt;
             line-height: 1.55;
             color: #111827;

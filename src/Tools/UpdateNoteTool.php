@@ -74,11 +74,17 @@ class UpdateNoteTool implements ToolContract, ToolDependencyContract, ToolMetada
             }
 
             $payload = [];
-            if (array_key_exists('name', $arguments)) {
-                $payload['name'] = $arguments['name'];
+            // WICHTIG: Viele LLMs schicken optionale Felder als null -> das darf NICHT den Inhalt löschen.
+            if (array_key_exists('name', $arguments) && $arguments['name'] !== null) {
+                $name = trim((string) $arguments['name']);
+                if ($name === '') {
+                    return ToolResult::error('Titel darf nicht leer sein.', 'VALIDATION_ERROR');
+                }
+                $payload['name'] = $name;
             }
-            if (array_key_exists('content', $arguments)) {
-                $payload['content'] = $arguments['content'];
+            // content darf bewusst leerer String sein (um zu leeren), aber null wird ignoriert
+            if (array_key_exists('content', $arguments) && $arguments['content'] !== null) {
+                $payload['content'] = (string) $arguments['content'];
             }
 
             if (empty($payload)) {

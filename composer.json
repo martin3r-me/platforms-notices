@@ -1,5 +1,8 @@
 {
   "name": "martin3r/platform-notes",
+  "require": {
+    "barryvdh/laravel-dompdf": "^3.0"
+  },
   "autoload": {
     "psr-4": {
       "Platform\\Notes\\": "src/"

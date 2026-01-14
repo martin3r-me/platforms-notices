@@ -21,6 +21,21 @@
     </x-slot>
 
     <x-ui-page-container class="max-w-4xl mx-auto">
+        @php($canUpdate = auth()->user()?->can('update', $note) ?? false)
+
+        {{-- Debug (temporär): zeigt ob Edit-Branch aktiv ist & ob JS läuft --}}
+        <div class="mb-3 text-xs text-[var(--ui-muted)] flex items-center gap-2">
+            <span class="px-2 py-1 rounded border border-[var(--ui-border)] bg-[var(--ui-muted-5)]">
+                canUpdate: <strong class="text-[var(--ui-secondary)]">{{ $canUpdate ? 'yes' : 'no' }}</strong>
+            </span>
+            <span class="px-2 py-1 rounded border border-[var(--ui-border)] bg-[var(--ui-muted-5)]">
+                ToastUI: <strong class="text-[var(--ui-secondary)]" x-data x-text="(window.ToastUIEditor ? 'loaded' : 'missing')">…</strong>
+            </span>
+            <span class="px-2 py-1 rounded border border-[var(--ui-border)] bg-[var(--ui-muted-5)]">
+                Alpine: <strong class="text-[var(--ui-secondary)]" x-data x-text="'ok'">…</strong>
+            </span>
+        </div>
+
         @can('update', $note)
             {{-- Bear/Obsidian-like Editor --}}
             <div

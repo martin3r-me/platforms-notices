@@ -1,6 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        {{-- Navbar bewusst leer: Navigation nur über Sidebar --}}
+        <x-ui-page-navbar :title="($note->name ?: 'Notiz')" icon="heroicon-o-document-text" />
     </x-slot>
 
     <x-ui-page-container class="max-w-4xl mx-auto">

@@ -1,6 +1,6 @@
 <x-ui-page>
     <x-slot name="navbar">
-        {{-- Navbar bewusst leer: Navigation nur über Sidebar --}}
+        <x-ui-page-navbar :title="$folder->name" icon="heroicon-o-folder" />
     </x-slot>
 
     <x-ui-page-container class="max-w-4xl mx-auto">

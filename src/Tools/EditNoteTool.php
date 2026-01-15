@@ -261,6 +261,7 @@ class EditNoteTool implements ToolContract, ToolDependencyContract, ToolMetadata
         return ToolResult::success(['content' => $out]);
     }
 
+
     public function getDependencies(): array
     {
         return [

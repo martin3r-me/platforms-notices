@@ -26,7 +26,11 @@ class EditNoteTool implements ToolContract, ToolDependencyContract, ToolMetadata
     {
         return "EDIT notes note content safely. Use this instead of PUT/PATCH when possible.\n"
             . "Ops: append, prepend, replace_exact, replace_between, upsert_heading.\n"
-            . "Rules: null fields are ignored; if replacement target is missing/ambiguous -> returns error (no write).";
+            . "Rules: null fields are ignored; if replacement target is missing/ambiguous -> returns error (no write).\n"
+            . "Best practice: use replace_between with stable markers, e.g.\n"
+            . "  <!-- AI:START section_name -->\n"
+            . "  ... content ...\n"
+            . "  <!-- AI:END section_name -->";
     }
 
     public function getSchema(): array

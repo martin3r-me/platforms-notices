@@ -12,7 +12,7 @@ use Platform\Core\Contracts\ToolResult;
 use Platform\Notes\Models\NotesNote;
 
 /**
- * Tool zum Abrufen einer Notiz inkl. Inhalt (optional mit Zeilennummern).
+ * Tool zum Abrufen einer Notiz inkl. Inhalt.
  */
 class GetNoteTool implements ToolContract, ToolDependencyContract, ToolMetadataContract
 {
@@ -23,9 +23,7 @@ class GetNoteTool implements ToolContract, ToolDependencyContract, ToolMetadataC
 
     public function getDescription(): string
     {
-        return 'GET /notes/notes/{id} - Liefert eine Notiz (Titel + Markdown-Inhalt). '
-            . 'Optional: include_lines=true für Zeilennummern; Antwort enthält total_lines und truncated. '
-            . 'max_lines begrenzt die Ausgabe (Default 2000).';
+        return 'GET /notes/notes/{id} - Liefert eine Notiz (Titel + Markdown-Inhalt).';
     }
 
     public function getSchema(): array
@@ -36,14 +34,6 @@ class GetNoteTool implements ToolContract, ToolDependencyContract, ToolMetadataC
                 'id' => [
                     'type' => 'integer',
                     'description' => 'ID der Notiz (ERFORDERLICH).',
-                ],
-                'include_lines' => [
-                    'type' => 'boolean',
-                    'description' => 'Wenn true: Inhalt zusätzlich als Liste mit Zeilennummern zurückgeben (für präzise Edits).',
-                ],
-                'max_lines' => [
-                    'type' => 'integer',
-                    'description' => 'Optional: Maximalzahl Zeilen für include_lines (Default 2000).',
                 ],
             ],
             'required' => ['id'],
@@ -76,27 +66,6 @@ class GetNoteTool implements ToolContract, ToolDependencyContract, ToolMetadataC
             }
 
             $content = (string) ($note->content ?? '');
-            $includeLines = (bool) ($arguments['include_lines'] ?? false);
-            $maxLines = (int) ($arguments['max_lines'] ?? 2000);
-            if ($maxLines <= 0) $maxLines = 2000;
-
-            $allLines = preg_split("/\r\n|\n|\r/", $content);
-            $allLines = $allLines === false ? [] : $allLines;
-            $totalLines = count($allLines);
-            $truncated = false;
-
-            $lines = null;
-            if ($includeLines) {
-                $truncated = $totalLines > $maxLines;
-                $rawLines = array_slice($allLines, 0, $maxLines);
-                $lines = [];
-                foreach ($rawLines as $i => $line) {
-                    $lines[] = [
-                        'no' => $i + 1,
-                        'text' => $line,
-                    ];
-                }
-            }
 
             return ToolResult::success([
                 'id' => $note->id,
@@ -105,10 +74,6 @@ class GetNoteTool implements ToolContract, ToolDependencyContract, ToolMetadataC
                 'folder_id' => $note->folder_id,
                 'team_id' => $note->team_id,
                 'content' => $content,
-                'content_lines' => $lines,
-                'total_lines' => $totalLines,
-                'truncated' => $truncated,
-                'max_lines' => $maxLines,
                 'updated_at' => $note->updated_at?->toIso8601String(),
             ]);
         } catch (\Throwable $e) {

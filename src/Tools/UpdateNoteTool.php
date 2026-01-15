@@ -26,7 +26,8 @@ class UpdateNoteTool implements ToolContract, ToolDependencyContract, ToolMetada
         return 'PATCH /notes/notes/{id} - Aktualisiert eine Notiz (direktes Setzen einzelner Felder). '
             . 'Parameter: id (required), name (optional), content (optional markdown). '
             . 'WICHTIG: Sende niemals content=null; null wird ignoriert. '
-            . 'Für sichere Teil-Änderungen (append/replace/section) nutze notes.notes.EDIT.';
+            . 'Für sichere Teil-Änderungen (append/replace/section) nutze notes.notes.EDIT. '
+            . 'Empfohlen: replace_between mit stabilen Markern.';
     }
 
     public function getSchema(): array

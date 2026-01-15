@@ -4,6 +4,7 @@ namespace Platform\Notes\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Symfony\Component\Uid\UuidV7;
 use Platform\Organization\Traits\HasOrganizationContexts;
 use Platform\Core\Contracts\HasTimeAncestors;
@@ -16,6 +17,7 @@ use Platform\Core\Contracts\HasDisplayName;
 class NotesNote extends Model implements HasTimeAncestors, HasKeyResultAncestors, HasDisplayName
 {
     use HasOrganizationContexts;
+    use SoftDeletes;
 
     protected $table = 'notes_notes';
 

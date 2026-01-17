@@ -35,6 +35,7 @@ class UpdateNoteTool implements ToolContract, ToolDependencyContract, ToolMetada
     {
         return [
             'type' => 'object',
+            'additionalProperties' => false, // Unbekannte Felder verbieten
             'properties' => [
                 'id' => [
                     'type' => 'integer',
@@ -100,6 +101,22 @@ class UpdateNoteTool implements ToolContract, ToolDependencyContract, ToolMetada
             // Optional: sichere Edit-Operation
             $op = array_key_exists('op', $arguments) ? (string) $arguments['op'] : null;
             if ($op !== null) {
+                // Trim Whitespace - leere Strings werden wie null behandelt (optionales Feld)
+                $op = trim($op);
+                if ($op === '') {
+                    $op = null; // Leerer String = wie nicht gesetzt
+                }
+            }
+            
+            if ($op !== null) {
+                $allowedOps = ['append', 'prepend', 'replace_exact', 'replace_between', 'upsert_heading'];
+                if (!in_array($op, $allowedOps, true)) {
+                    return ToolResult::error(
+                        'Unbekannte op: ' . $op . '. Erlaubte Werte: ' . implode(', ', $allowedOps),
+                        'VALIDATION_ERROR'
+                    );
+                }
+                
                 $content = (string) ($note->content ?? '');
                 $result = match ($op) {
                     'append' => $this->append($content, (string) ($arguments['text'] ?? '')),
@@ -122,7 +139,6 @@ class UpdateNoteTool implements ToolContract, ToolDependencyContract, ToolMetada
                         (int) ($arguments['level'] ?? 2),
                         (string) ($arguments['mode'] ?? 'append')
                     ),
-                    default => ToolResult::error('Unbekannte op: ' . $op, 'VALIDATION_ERROR'),
                 };
 
                 if (!$result->success) {

@@ -125,48 +125,21 @@
 
     <x-slot name="sidebar">
         <x-ui-page-sidebar title="Navigation" width="w-80" :defaultOpen="true">
-            <div class="p-6 space-y-6">
-                {{-- Ordner-Baum --}}
-                <div>
-                    <h3 class="text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-3">Ordner-Struktur</h3>
-                    <div class="space-y-1 max-h-[400px] overflow-y-auto">
-                        @php
-                            $folderTree = $this->getFolderTree();
-                        @endphp
-                        @foreach($folderTree as $item)
-                            <a 
-                                href="{{ route('notes.folders.show', $item['folder']) }}" 
-                                wire:navigate
-                                class="flex items-center gap-2 px-3 py-2 rounded-md transition-colors {{ $item['isActive'] ? 'bg-[var(--ui-primary-5)] border border-[var(--ui-primary)]/20' : 'hover:bg-[var(--ui-muted-5)]' }}"
-                                style="padding-left: {{ ($item['level'] * 1.5) + 0.75 }}rem;"
-                            >
-                                @if($item['hasChildren'])
-                                    @svg('heroicon-o-folder', 'w-4 h-4 {{ $item["isActive"] ? "text-[var(--ui-primary)]" : "text-[var(--ui-muted)]" }}')
-                                @else
-                                    @svg('heroicon-o-folder', 'w-4 h-4 {{ $item["isActive"] ? "text-[var(--ui-primary)]" : "text-[var(--ui-muted)]" }}')
-                                @endif
-                                <span class="text-sm {{ $item['isActive'] ? 'font-semibold text-[var(--ui-primary)]' : 'text-[var(--ui-secondary)]' }}">
-                                    {{ $item['folder']->name }}
-                                </span>
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-
+            <div class="p-4 space-y-4">
                 {{-- Aktionen --}}
                 @can('update', $folder)
                     <div>
-                        <h3 class="text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-3">Aktionen</h3>
-                        <div class="flex flex-col gap-2">
-                            <x-ui-button variant="secondary-outline" size="sm" wire:click="createSubFolder" class="w-full">
-                                <span class="inline-flex items-center gap-2">
-                                    @svg('heroicon-o-folder-plus','w-4 h-4')
+                        <h3 class="text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-2">Aktionen</h3>
+                        <div class="flex flex-col gap-1.5">
+                            <x-ui-button variant="secondary-outline" size="sm" wire:click="createSubFolder" class="w-full text-xs py-1.5">
+                                <span class="inline-flex items-center gap-1.5">
+                                    @svg('heroicon-o-folder-plus','w-3.5 h-3.5')
                                     <span>Unterordner</span>
                                 </span>
                             </x-ui-button>
-                            <x-ui-button variant="secondary-outline" size="sm" wire:click="createNote" class="w-full">
-                                <span class="inline-flex items-center gap-2">
-                                    @svg('heroicon-o-document-plus','w-4 h-4')
+                            <x-ui-button variant="secondary-outline" size="sm" wire:click="createNote" class="w-full text-xs py-1.5">
+                                <span class="inline-flex items-center gap-1.5">
+                                    @svg('heroicon-o-document-plus','w-3.5 h-3.5')
                                     <span>Notiz</span>
                                 </span>
                             </x-ui-button>
@@ -174,40 +147,55 @@
                     </div>
                 @endcan
 
+                {{-- Löschen --}}
+                @can('delete', $folder)
+                    <div>
+                        <h3 class="text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-2">Gefährlich</h3>
+                        <button
+                            wire:click="deleteFolder"
+                            wire:confirm="Möchten Sie diesen Ordner wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+                            class="w-full px-3 py-1.5 text-xs rounded-md border border-red-500/30 bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-1.5"
+                        >
+                            @svg('heroicon-o-trash','w-3.5 h-3.5')
+                            <span>Ordner löschen</span>
+                        </button>
+                    </div>
+                @endcan
+
                 {{-- Ordner-Details --}}
                 <div>
-                    <h3 class="text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-3">Details</h3>
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center py-2 px-3 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
-                            <span class="text-sm text-[var(--ui-muted)]">Erstellt</span>
-                            <span class="text-sm text-[var(--ui-secondary)] font-medium">
+                    <h3 class="text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-2">Details</h3>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between items-center py-1.5 px-2.5 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
+                            <span class="text-xs text-[var(--ui-muted)]">Erstellt</span>
+                            <span class="text-xs text-[var(--ui-secondary)] font-medium">
                                 {{ $folder->created_at->format('d.m.Y') }}
                             </span>
                         </div>
                         @if($folder->parent)
-                            <div class="flex justify-between items-center py-2 px-3 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
-                                <span class="text-sm text-[var(--ui-muted)]">Übergeordnet</span>
-                                <a href="{{ route('notes.folders.show', $folder->parent) }}" wire:navigate class="text-sm text-[var(--ui-primary)] font-medium hover:underline">
+                            <div class="flex justify-between items-center py-1.5 px-2.5 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
+                                <span class="text-xs text-[var(--ui-muted)]">Übergeordnet</span>
+                                <a href="{{ route('notes.folders.show', $folder->parent) }}" wire:navigate class="text-xs text-[var(--ui-primary)] font-medium hover:underline">
                                     {{ $folder->parent->name }}
                                 </a>
                             </div>
                         @endif
-                        <div class="flex justify-between items-center py-2 px-3 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
-                            <span class="text-sm text-[var(--ui-muted)]">Unterordner</span>
-                            <span class="text-sm text-[var(--ui-secondary)] font-medium">
+                        <div class="flex justify-between items-center py-1.5 px-2.5 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
+                            <span class="text-xs text-[var(--ui-muted)]">Unterordner</span>
+                            <span class="text-xs text-[var(--ui-secondary)] font-medium">
                                 {{ $subFolders->count() }}
                             </span>
                         </div>
-                        <div class="flex justify-between items-center py-2 px-3 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
-                            <span class="text-sm text-[var(--ui-muted)]">Notizen</span>
-                            <span class="text-sm text-[var(--ui-secondary)] font-medium">
+                        <div class="flex justify-between items-center py-1.5 px-2.5 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
+                            <span class="text-xs text-[var(--ui-muted)]">Notizen</span>
+                            <span class="text-xs text-[var(--ui-secondary)] font-medium">
                                 {{ $notes->count() }}
                             </span>
                         </div>
                         @if($folder->done)
-                            <div class="flex justify-between items-center py-2 px-3 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
-                                <span class="text-sm text-[var(--ui-muted)]">Status</span>
-                                <span class="text-xs font-medium px-2 py-0.5 rounded bg-[var(--ui-success-5)] text-[var(--ui-success)]">
+                            <div class="flex justify-between items-center py-1.5 px-2.5 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
+                                <span class="text-xs text-[var(--ui-muted)]">Status</span>
+                                <span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[var(--ui-success-5)] text-[var(--ui-success)]">
                                     Erledigt
                                 </span>
                             </div>

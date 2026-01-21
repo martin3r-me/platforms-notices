@@ -76,6 +76,28 @@ class Folder extends Component
         return $this->redirect(route('notes.notes.show', $note), navigate: true);
     }
 
+    public function deleteFolder()
+    {
+        $this->authorize('delete', $this->folder);
+        
+        // Prüfen, ob Unterordner oder Notizen vorhanden sind
+        if ($this->folder->children()->count() > 0 || $this->folder->notes()->count() > 0) {
+            session()->flash('error', 'Der Ordner kann nicht gelöscht werden, da er noch Unterordner oder Notizen enthält.');
+            return;
+        }
+
+        $parentId = $this->folder->parent_id;
+        $this->folder->delete();
+
+        $this->dispatch('updateSidebar');
+
+        if ($parentId) {
+            return $this->redirect(route('notes.folders.show', $parentId), navigate: true);
+        }
+
+        return $this->redirect(route('notes.dashboard'), navigate: true);
+    }
+
     public function rendered()
     {
         $this->dispatch('comms', [

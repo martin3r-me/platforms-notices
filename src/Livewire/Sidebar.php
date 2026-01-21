@@ -90,6 +90,11 @@ class Sidebar extends Component
         } else {
             $this->expandedFolders[] = $folderId;
         }
+        
+        // In localStorage speichern
+        if (request()->hasHeader('X-Livewire')) {
+            // Nur im Browser ausführen
+        }
     }
 
     public function isFolderExpanded($folderId): bool

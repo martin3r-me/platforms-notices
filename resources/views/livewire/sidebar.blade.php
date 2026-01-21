@@ -8,12 +8,14 @@
                 @this.set('showAllFolders', savedState === 'true');
             }
             
-            // Erweiterte Ordner aus localStorage laden
+            // Erweiterte Ordner aus localStorage laden (falls vorhanden, sonst Standard: alle erweitert)
             const expandedState = localStorage.getItem('notes.expandedFolders');
             if (expandedState) {
                 try {
                     const expanded = JSON.parse(expandedState);
-                    @this.set('expandedFolders', expanded);
+                    if (Array.isArray(expanded) && expanded.length > 0) {
+                        @this.set('expandedFolders', expanded);
+                    }
                 } catch (e) {
                     console.error('Fehler beim Laden der erweiterten Ordner:', e);
                 }
@@ -22,23 +24,23 @@
     }"
 >
     {{-- Modul Header --}}
-    <div x-show="!collapsed" class="p-3 text-sm italic text-[var(--ui-secondary)] uppercase border-b border-[var(--ui-border)] mb-2">
+    <div x-show="!collapsed" class="p-2 text-xs italic text-[var(--ui-secondary)] uppercase border-b border-[var(--ui-border)] mb-1">
         Notizen
     </div>
     
     {{-- Abschnitt: Allgemein (über UI-Komponenten) --}}
     <x-ui-sidebar-list label="Allgemein">
         <x-ui-sidebar-item :href="route('notes.dashboard')">
-            @svg('heroicon-o-home', 'w-4 h-4 text-[var(--ui-secondary)]')
-            <span class="ml-2 text-sm">Dashboard</span>
+            @svg('heroicon-o-home', 'w-3.5 h-3.5 text-[var(--ui-secondary)]')
+            <span class="ml-1.5 text-xs">Dashboard</span>
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
     {{-- Neuer Ordner --}}
     <x-ui-sidebar-list>
         <x-ui-sidebar-item wire:click="createFolder">
-            @svg('heroicon-o-plus-circle', 'w-4 h-4 text-[var(--ui-secondary)]')
-            <span class="ml-2 text-sm">Neuer Ordner</span>
+            @svg('heroicon-o-plus-circle', 'w-3.5 h-3.5 text-[var(--ui-secondary)]')
+            <span class="ml-1.5 text-xs">Neuer Ordner</span>
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 

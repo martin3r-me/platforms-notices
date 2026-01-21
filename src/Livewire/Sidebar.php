@@ -16,6 +16,29 @@ class Sidebar extends Component
     {
         // Zustand aus localStorage laden (wird vom Frontend gesetzt)
         $this->showAllFolders = false; // Default-Wert, wird vom Frontend überschrieben
+        
+        // Standardmäßig alle Ordner als erweitert markieren
+        $this->initializeExpandedFolders();
+    }
+
+    protected function initializeExpandedFolders()
+    {
+        $user = auth()->user();
+        $teamId = $user?->currentTeam->id ?? null;
+
+        if (!$user || !$teamId) {
+            return;
+        }
+
+        // Alle Ordner laden, auf die der User Zugriff hat
+        $allFolders = NotesFolder::where('team_id', $teamId)
+            ->get()
+            ->filter(function ($folder) use ($user) {
+                return $user->can('view', $folder);
+            });
+
+        // Alle Ordner-IDs als erweitert markieren
+        $this->expandedFolders = $allFolders->pluck('id')->toArray();
     }
 
     #[On('updateSidebar')] 
@@ -91,10 +114,7 @@ class Sidebar extends Component
             $this->expandedFolders[] = $folderId;
         }
         
-        // In localStorage speichern
-        if (request()->hasHeader('X-Livewire')) {
-            // Nur im Browser ausführen
-        }
+        // In localStorage speichern (wird vom Frontend übernommen)
     }
 
     public function isFolderExpanded($folderId): bool

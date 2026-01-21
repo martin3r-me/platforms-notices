@@ -126,6 +126,25 @@
     <x-slot name="sidebar">
         <x-ui-page-sidebar title="Navigation" width="w-80" :defaultOpen="true">
             <div class="p-4 space-y-4">
+                {{-- Ordner umbenennen --}}
+                @can('update', $folder)
+                    <div>
+                        <h3 class="text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-2">Ordner</h3>
+                        <div class="space-y-1.5">
+                            <div class="flex items-center gap-1.5">
+                                <input
+                                    type="text"
+                                    value="{{ $folder->name }}"
+                                    wire:model.blur="folder.name"
+                                    wire:change="updateFolderName($event.target.value)"
+                                    class="flex-1 px-2 py-1 text-xs rounded-md border border-[var(--ui-border)] bg-[var(--ui-muted-5)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]"
+                                    placeholder="Ordner-Name"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                @endcan
+
                 {{-- Aktionen --}}
                 @can('update', $folder)
                     <div>
@@ -143,6 +162,86 @@
                                     <span>Notiz</span>
                                 </span>
                             </x-ui-button>
+                        </div>
+                    </div>
+                @endcan
+
+                {{-- Benutzer-Verwaltung --}}
+                @can('invite', $folder)
+                    <div>
+                        <h3 class="text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-2">Benutzer</h3>
+                        <div class="space-y-2">
+                            {{-- User hinzufügen --}}
+                            <div class="flex gap-1.5">
+                                <select
+                                    wire:model="selectedUserId"
+                                    class="flex-1 px-2 py-1 text-xs rounded-md border border-[var(--ui-border)] bg-[var(--ui-muted-5)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]"
+                                >
+                                    <option value="">User auswählen...</option>
+                                    @foreach($teamUsers as $teamUser)
+                                        @php
+                                            $isOwner = $folder->user_id === $teamUser->id;
+                                            $isAlreadyAdded = $folderUsers->contains('user_id', $teamUser->id);
+                                        @endphp
+                                        @if(!$isOwner && !$isAlreadyAdded)
+                                            <option value="{{ $teamUser->id }}">{{ $teamUser->name }}</option>
+                                        @endif
+                                    @endforeach
+                                </select>
+                                <select
+                                    wire:model="selectedRole"
+                                    class="px-2 py-1 text-xs rounded-md border border-[var(--ui-border)] bg-[var(--ui-muted-5)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]"
+                                >
+                                    <option value="viewer">Viewer</option>
+                                    <option value="member">Member</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                                <button
+                                    wire:click="addFolderUser($selectedUserId, $selectedRole)"
+                                    wire:loading.attr="disabled"
+                                    class="px-2 py-1 text-xs rounded-md bg-[var(--ui-primary)] text-[var(--ui-on-primary)] hover:opacity-90 transition-opacity disabled:opacity-50"
+                                    @if(!$selectedUserId) disabled @endif
+                                >
+                                    @svg('heroicon-o-plus', 'w-3.5 h-3.5')
+                                </button>
+                            </div>
+
+                            {{-- Bereits hinzugefügte User --}}
+                            <div class="space-y-1">
+                                @foreach($folderUsers as $folderUser)
+                                    <div class="flex items-center justify-between px-2 py-1.5 bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40 rounded-md">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-xs font-medium text-[var(--ui-secondary)] truncate">
+                                                {{ $folderUser->user->name ?? 'Unbekannt' }}
+                                            </div>
+                                            @if($folderUser->user_id === $folder->user_id)
+                                                <div class="text-[10px] text-[var(--ui-muted)]">Owner</div>
+                                            @else
+                                                <select
+                                                    wire:change="changeFolderUserRole({{ $folderUser->user_id }}, $event.target.value)"
+                                                    class="text-[10px] mt-0.5 px-1.5 py-0.5 rounded border border-[var(--ui-border)] bg-[var(--ui-background)] text-[var(--ui-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]"
+                                                    @if($folderUser->role === 'owner' || !auth()->user()->can('changeRole', $folder)) disabled @endif
+                                                >
+                                                    <option value="owner" @if($folderUser->role === 'owner') selected @endif>Owner</option>
+                                                    <option value="admin" @if($folderUser->role === 'admin') selected @endif>Admin</option>
+                                                    <option value="member" @if($folderUser->role === 'member') selected @endif>Member</option>
+                                                    <option value="viewer" @if($folderUser->role === 'viewer') selected @endif>Viewer</option>
+                                                </select>
+                                            @endif
+                                        </div>
+                                        @if($folderUser->role !== 'owner' && $folder->user_id !== $folderUser->user_id && auth()->user()->can('removeMember', $folder))
+                                            <button
+                                                wire:click="removeFolderUser({{ $folderUser->user_id }})"
+                                                wire:confirm="Möchten Sie diesen Benutzer wirklich entfernen?"
+                                                class="ml-2 p-1 text-red-500 hover:text-red-700 transition-colors"
+                                                title="Entfernen"
+                                            >
+                                                @svg('heroicon-o-x-mark', 'w-3.5 h-3.5')
+                                            </button>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                 @endcan

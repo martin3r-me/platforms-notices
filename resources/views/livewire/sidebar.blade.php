@@ -7,6 +7,17 @@
             if (savedState !== null) {
                 @this.set('showAllFolders', savedState === 'true');
             }
+            
+            // Erweiterte Ordner aus localStorage laden
+            const expandedState = localStorage.getItem('notes.expandedFolders');
+            if (expandedState) {
+                try {
+                    const expanded = JSON.parse(expandedState);
+                    @this.set('expandedFolders', expanded);
+                } catch (e) {
+                    console.error('Fehler beim Laden der erweiterten Ordner:', e);
+                }
+            }
         }
     }"
 >
@@ -45,24 +56,16 @@
         </button>
     </div>
 
-    {{-- Abschnitt: Ordner-Baum --}}
+    {{-- Abschnitt: Ordner-Baum (Datei-Explorer-ähnlich) --}}
     <div>
         <div class="mt-2" x-show="!collapsed">
-            @if($folderTree->isNotEmpty())
+            @if($rootFolders->isNotEmpty())
                 <x-ui-sidebar-list :label="'Ordner' . ($showAllFolders ? ' (' . $allFoldersCount . ')' : '')">
-                    @foreach($folderTree as $item)
-                        <x-ui-sidebar-item 
-                            :href="route('notes.folders.show', ['notesFolder' => $item['folder']])"
-                            :style="'padding-left: ' . (($item['level'] * 1.5) + 0.75) . 'rem;'"
-                        >
-                            @svg('heroicon-o-folder', 'w-5 h-5 flex-shrink-0 text-[var(--ui-secondary)]')
-                            <div class="flex-1 min-w-0 ml-2">
-                                <div class="truncate text-sm font-medium">{{ $item['folder']->name }}</div>
-                                @if($item['folder']->description)
-                                    <div class="truncate text-xs text-[var(--ui-muted)]">{{ mb_substr($item['folder']->description, 0, 30) }}...</div>
-                                @endif
-                            </div>
-                        </x-ui-sidebar-item>
+                    @foreach($rootFolders as $folder)
+                        @include('notes::livewire.partials.folder-tree-item', [
+                            'folder' => $folder,
+                            'level' => 0
+                        ])
                     @endforeach
                 </x-ui-sidebar-list>
             @elseif($folders->isNotEmpty())

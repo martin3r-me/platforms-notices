@@ -10,6 +10,7 @@ use Livewire\Attributes\On;
 class Sidebar extends Component
 {
     public bool $showAllFolders = false;
+    public array $expandedFolders = [];
 
     public function mount()
     {
@@ -47,6 +48,12 @@ class Sidebar extends Component
             'team_id' => $team->id,
         ]);
 
+        // Owner automatisch als folderUser hinzufügen
+        $folder->folderUsers()->create([
+            'user_id' => $user->id,
+            'role' => \Platform\Notes\Enums\FolderRole::OWNER->value,
+        ]);
+
         $this->dispatch('updateSidebar');
         
         // Zur Ordner-Ansicht weiterleiten
@@ -62,33 +69,68 @@ class Sidebar extends Component
             return collect();
         }
 
-        // Alle Root-Ordner laden
-        $rootFolders = NotesFolder::where('team_id', $teamId)
+        // Alle Root-Ordner des Teams laden
+        $allRootFolders = NotesFolder::where('team_id', $teamId)
             ->whereNull('parent_id')
             ->orderBy('name')
             ->get();
 
+        // Nur Ordner filtern, auf die der User Zugriff hat
+        $rootFolders = $allRootFolders->filter(function ($folder) use ($user) {
+            return $user->can('view', $folder);
+        });
+
         return $this->buildFolderTree($rootFolders, 0);
     }
 
-    protected function buildFolderTree($folders, $level = 0, $maxLevel = 2)
+    public function toggleFolder($folderId)
+    {
+        if (in_array($folderId, $this->expandedFolders)) {
+            $this->expandedFolders = array_values(array_filter($this->expandedFolders, fn($id) => $id !== $folderId));
+        } else {
+            $this->expandedFolders[] = $folderId;
+        }
+    }
+
+    public function isFolderExpanded($folderId): bool
+    {
+        return in_array($folderId, $this->expandedFolders);
+    }
+
+    protected function buildFolderTree($folders, $level = 0, $maxLevel = 10, $parentExpanded = true)
     {
         if ($level > $maxLevel) {
             return collect();
         }
 
+        $user = auth()->user();
         $tree = collect();
         
         foreach ($folders as $folder) {
+            // Nur Ordner hinzufügen, auf die der User Zugriff hat
+            if (!$user->can('view', $folder)) {
+                continue;
+            }
+
+            // Prüfen ob Parent-Ordner erweitert ist (außer bei Root-Level)
+            if ($level > 0 && !$parentExpanded) {
+                continue;
+            }
+
+            $hasChildren = $folder->children()->exists();
+            $isExpanded = $this->isFolderExpanded($folder->id);
+
             $tree->push([
                 'folder' => $folder,
                 'level' => $level,
+                'hasChildren' => $hasChildren,
+                'isExpanded' => $isExpanded,
             ]);
             
-            // Rekursiv Unterordner hinzufügen
-            $children = $folder->children()->orderBy('name')->get();
-            if ($children->count() > 0 && $level < $maxLevel) {
-                $tree = $tree->merge($this->buildFolderTree($children, $level + 1, $maxLevel));
+            // Rekursiv Unterordner hinzufügen (nur wenn erweitert)
+            if ($hasChildren && $isExpanded && $level < $maxLevel) {
+                $children = $folder->children()->orderBy('name')->get();
+                $tree = $tree->merge($this->buildFolderTree($children, $level + 1, $maxLevel, $isExpanded));
             }
         }
         
@@ -116,21 +158,33 @@ class Sidebar extends Component
             ->orderBy('name')
             ->get();
 
-        // Ordner filtern: alle oder nur bestimmte (später erweiterbar)
-        $foldersToShow = $this->showAllFolders 
-            ? $allFolders 
-            : $allFolders; // Später: nur Ordner mit bestimmten Kriterien
+        // Ordner filtern: nur solche, auf die der User Zugriff hat
+        $foldersToShow = $allFolders->filter(function ($folder) use ($user) {
+            return $user->can('view', $folder);
+        });
 
         $hasMoreFolders = false; // Später: wenn Filter-Logik implementiert wird
 
         // Ordner-Baum für erweiterte Navigation
         $folderTree = $this->getFolderTree();
 
+        // Root-Ordner mit Children-Info laden für die Sidebar
+        $rootFoldersWithChildren = NotesFolder::query()
+            ->where('team_id', $teamId)
+            ->whereNull('parent_id')
+            ->with('children')
+            ->orderBy('name')
+            ->get()
+            ->filter(function ($folder) use ($user) {
+                return $user->can('view', $folder);
+            });
+
         return view('notes::livewire.sidebar', [
             'folders' => $foldersToShow,
             'hasMoreFolders' => $hasMoreFolders,
             'allFoldersCount' => $allFolders->count(),
             'folderTree' => $folderTree,
+            'rootFolders' => $rootFoldersWithChildren,
         ]);
     }
 }

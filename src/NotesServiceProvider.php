@@ -23,7 +23,12 @@ class NotesServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Commands können später hinzugefügt werden
+        // Commands registrieren
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Platform\Notes\Console\Commands\MigrateFolderOwners::class,
+            ]);
+        }
     }
 
     public function boot(): void

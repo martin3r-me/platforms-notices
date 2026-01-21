@@ -76,6 +76,44 @@ class NotesFolder extends Model implements HasTimeAncestors, HasKeyResultAncesto
         return $this->hasMany(NotesNote::class, 'folder_id')->orderBy('order');
     }
 
+    public function folderUsers(): HasMany
+    {
+        return $this->hasMany(NotesFolderUser::class, 'folder_id');
+    }
+
+    /**
+     * Gibt die effektive Rolle eines Users für diesen Ordner zurück.
+     * Prüft zuerst direkte Berechtigungen, dann vererbte vom Parent.
+     */
+    public function getEffectiveRoleForUser($userId): ?string
+    {
+        // 1. Direkte Berechtigung prüfen
+        $folderUser = $this->folderUsers()->where('user_id', $userId)->first();
+        if ($folderUser && $folderUser->role) {
+            return $folderUser->role;
+        }
+
+        // 2. Owner hat immer Zugriff
+        if ($this->user_id === $userId) {
+            return 'owner';
+        }
+
+        // 3. Vererbung vom Parent prüfen (rekursiv)
+        if ($this->parent_id) {
+            $parent = $this->parent;
+            if ($parent) {
+                $parentRole = $parent->getEffectiveRoleForUser($userId);
+                if ($parentRole) {
+                    // Berechtigungen können nur reduziert werden, nicht erhöht
+                    // Wenn Parent z.B. 'admin' hat, kann Subfolder maximal 'admin' haben
+                    return $parentRole;
+                }
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Gibt alle Vorfahren-Kontexte für die Zeitkaskade zurück.
      */

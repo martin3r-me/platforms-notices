@@ -60,16 +60,19 @@
 
     {{-- Abschnitt: Ordner-Baum (Datei-Explorer-ähnlich) --}}
     <div>
-        <div class="mt-2" x-show="!collapsed">
+        <div class="mt-1" x-show="!collapsed">
             @if($rootFolders->isNotEmpty())
-                <x-ui-sidebar-list :label="'Ordner' . ($showAllFolders ? ' (' . $allFoldersCount . ')' : '')">
-                    @foreach($rootFolders as $folder)
-                        @include('notes::livewire.partials.folder-tree-item', [
-                            'folder' => $folder,
-                            'level' => 0
-                        ])
-                    @endforeach
-                </x-ui-sidebar-list>
+                <div x-show="!collapsed" class="px-1 py-1 border-b border-[var(--ui-border)]">
+                    <div class="px-1 pb-1 text-[10px] uppercase tracking-wide text-[var(--ui-muted)]">{{ 'Ordner' . ($showAllFolders ? ' (' . $allFoldersCount . ')' : '') }}</div>
+                    <div class="flex flex-col gap-0.5">
+                        @foreach($rootFolders as $folder)
+                            @include('notes::livewire.partials.folder-tree-item', [
+                                'folder' => $folder,
+                                'level' => 0
+                            ])
+                        @endforeach
+                    </div>
+                </div>
             @elseif($folders->isNotEmpty())
                 {{-- Fallback: Nur Root-Ordner anzeigen --}}
                 <x-ui-sidebar-list :label="'Ordner' . ($showAllFolders ? ' (' . $allFoldersCount . ')' : '')">

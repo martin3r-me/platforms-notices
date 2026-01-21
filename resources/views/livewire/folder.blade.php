@@ -174,7 +174,7 @@
                             {{-- User hinzufügen --}}
                             <div class="flex gap-1.5">
                                 <select
-                                    wire:model="selectedUserId"
+                                    wire:model.live="selectedUserId"
                                     class="flex-1 px-2 py-1 text-xs rounded-md border border-[var(--ui-border)] bg-[var(--ui-muted-5)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]"
                                 >
                                     <option value="">User auswählen...</option>
@@ -189,7 +189,7 @@
                                     @endforeach
                                 </select>
                                 <select
-                                    wire:model="selectedRole"
+                                    wire:model.live="selectedRole"
                                     class="px-2 py-1 text-xs rounded-md border border-[var(--ui-border)] bg-[var(--ui-muted-5)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]"
                                 >
                                     <option value="viewer">Viewer</option>
@@ -197,10 +197,11 @@
                                     <option value="admin">Admin</option>
                                 </select>
                                 <button
-                                    wire:click="addFolderUser($selectedUserId, $selectedRole)"
+                                    wire:click="addFolderUser"
                                     wire:loading.attr="disabled"
-                                    class="px-2 py-1 text-xs rounded-md bg-[var(--ui-primary)] text-[var(--ui-on-primary)] hover:opacity-90 transition-opacity disabled:opacity-50"
-                                    @if(!$selectedUserId) disabled @endif
+                                    x-data="{ selectedUserId: @entangle('selectedUserId') }"
+                                    x-bind:disabled="!selectedUserId || selectedUserId === '' || selectedUserId === null"
+                                    class="px-2 py-1 text-xs rounded-md bg-[var(--ui-primary)] text-[var(--ui-on-primary)] hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     @svg('heroicon-o-plus', 'w-3.5 h-3.5')
                                 </button>

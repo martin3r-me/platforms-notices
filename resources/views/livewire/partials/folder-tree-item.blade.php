@@ -1,7 +1,8 @@
 @php
     $hasChildren = $folder->children()->exists();
     $isExpanded = in_array($folder->id, $this->expandedFolders);
-    $paddingLeft = ($level * 0.5) + 0.25; // Minimale Einrückung: 0.5rem pro Level, 0.25rem Basis
+    // Erst ab Ebene 2 einrücken, Ebene 0 und 1 bündig
+    $paddingLeft = $level >= 2 ? (($level - 2) * 0.5) + 0.25 : 0;
 @endphp
 
 <div class="folder-item" style="padding-left: {{ $paddingLeft }}rem;">

@@ -203,14 +203,29 @@
     @push('styles')
     <style>
         /* Toast UI Editor: make it feel like Bear/Obsidian (clean, minimal) */
+        .notes-editor-shell {
+            position: relative;
+            z-index: 1; /* Niedriger z-index, damit Navbar-Dropdowns darüber liegen */
+        }
         .notes-editor-shell .toastui-editor-defaultUI {
             border: 1px solid var(--ui-border);
             border-radius: 12px;
             overflow: hidden;
+            position: relative;
+            z-index: 1;
         }
         .notes-editor-shell .toastui-editor-toolbar {
             background: color-mix(in srgb, var(--ui-muted-5) 70%, transparent);
             border-bottom: 1px solid var(--ui-border);
+            position: relative;
+            z-index: 1;
+        }
+        /* Dropdowns und Popups des Editors sollten niedrigeren z-index haben als Navbar (50) */
+        .notes-editor-shell .toastui-editor-popup,
+        .notes-editor-shell .toastui-editor-dropdown,
+        .notes-editor-shell .toastui-editor-contents .toastui-editor-popup,
+        .notes-editor-shell .toastui-editor-contents .toastui-editor-dropdown {
+            z-index: 40 !important; /* Niedriger als Navbar (50), aber hoch genug für Editor-Funktionalität */
         }
         .notes-editor-shell .toastui-editor-contents {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;

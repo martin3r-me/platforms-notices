@@ -12,7 +12,7 @@ class FolderPolicy extends RolePolicy
     /**
      * Darf der User diesen Ordner sehen?
      */
-    public function view(User $user, NotesFolder $folder): bool
+    public function view(User $user, $folder): bool
     {
         // 1. Owner hat immer Zugriff
         if ($this->isOwner($user, $folder)) {
@@ -36,7 +36,7 @@ class FolderPolicy extends RolePolicy
     /**
      * Darf der User diesen Ordner bearbeiten?
      */
-    public function update(User $user, NotesFolder $folder): bool
+    public function update(User $user, $folder): bool
     {
         // 1. Owner hat immer Zugriff
         if ($this->isOwner($user, $folder)) {
@@ -60,7 +60,7 @@ class FolderPolicy extends RolePolicy
     /**
      * Darf der User diesen Ordner löschen?
      */
-    public function delete(User $user, NotesFolder $folder): bool
+    public function delete(User $user, $folder): bool
     {
         // Nur Owner darf löschen
         if ($this->isOwner($user, $folder)) {
@@ -89,7 +89,7 @@ class FolderPolicy extends RolePolicy
     /**
      * Darf der User Mitglieder einladen?
      */
-    public function invite(User $user, NotesFolder $folder): bool
+    public function invite(User $user, $folder): bool
     {
         // Nur Owner und Admin können einladen
         if ($this->isOwner($user, $folder)) {
@@ -110,7 +110,7 @@ class FolderPolicy extends RolePolicy
     /**
      * Darf der User Mitglieder entfernen?
      */
-    public function removeMember(User $user, NotesFolder $folder): bool
+    public function removeMember(User $user, $folder): bool
     {
         // Nur Owner und Admin können entfernen
         if ($this->isOwner($user, $folder)) {
@@ -131,7 +131,7 @@ class FolderPolicy extends RolePolicy
     /**
      * Darf der User Rollen ändern?
      */
-    public function changeRole(User $user, NotesFolder $folder): bool
+    public function changeRole(User $user, $folder): bool
     {
         // Nur Owner kann Rollen ändern
         if ($this->isOwner($user, $folder)) {
@@ -149,8 +149,12 @@ class FolderPolicy extends RolePolicy
     /**
      * Hole die Ordner-Rolle des Users (inkl. Vererbung)
      */
-    protected function getUserFolderRole(User $user, NotesFolder $folder): ?string
+    protected function getUserFolderRole(User $user, $folder): ?string
     {
+        if (!$folder instanceof NotesFolder) {
+            return null;
+        }
+        
         return $folder->getEffectiveRoleForUser($user->id);
     }
 

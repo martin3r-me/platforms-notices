@@ -202,30 +202,31 @@
 
     @push('styles')
     <style>
-        /* Toast UI Editor: make it feel like Bear/Obsidian (clean, minimal) */
+        /* Toast UI Editor: z-index Isolation – Navbar-Dropdowns (z-50) müssen ÜBER dem Editor liegen */
         .notes-editor-shell {
             position: relative;
-            z-index: 1; /* Niedriger z-index, damit Navbar-Dropdowns darüber liegen */
+            z-index: 1 !important;
+            isolation: isolate; /* eigener Stacking Context, nichts kann nach oben escapen */
         }
         .notes-editor-shell .toastui-editor-defaultUI {
             border: 1px solid var(--ui-border);
             border-radius: 12px;
             overflow: hidden;
-            position: relative;
-            z-index: 1;
+            z-index: auto !important;
         }
         .notes-editor-shell .toastui-editor-toolbar {
             background: color-mix(in srgb, var(--ui-muted-5) 70%, transparent);
             border-bottom: 1px solid var(--ui-border);
-            position: relative;
-            z-index: 1;
+            z-index: auto !important;
         }
-        /* Dropdowns und Popups des Editors sollten niedrigeren z-index haben als Navbar (50) */
+        /* Alle Toast UI internen z-index Werte auf max 5 begrenzen (innerhalb des isolierten Contexts) */
         .notes-editor-shell .toastui-editor-popup,
         .notes-editor-shell .toastui-editor-dropdown,
-        .notes-editor-shell .toastui-editor-contents .toastui-editor-popup,
-        .notes-editor-shell .toastui-editor-contents .toastui-editor-dropdown {
-            z-index: 40 !important; /* Niedriger als Navbar (50), aber hoch genug für Editor-Funktionalität */
+        .notes-editor-shell [class*="toastui-editor"] {
+            z-index: auto !important;
+        }
+        .notes-editor-shell .toastui-editor-popup {
+            z-index: 5 !important; /* nur innerhalb des Shell-Contexts relevant */
         }
         .notes-editor-shell .toastui-editor-contents {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;

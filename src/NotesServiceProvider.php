@@ -141,6 +141,9 @@ class NotesServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Notes\Tools\DeleteNoteTool());
             $registry->register(new \Platform\Notes\Tools\UpdateNoteTool());
             $registry->register(new \Platform\Notes\Tools\GetNoteTool());
+            $registry->register(new \Platform\Notes\Tools\GetFolderPermissionsTool());
+            $registry->register(new \Platform\Notes\Tools\SetFolderPermissionTool());
+            $registry->register(new \Platform\Notes\Tools\RemoveFolderPermissionTool());
         } catch (\Throwable $e) {
             // Silent fail - Tool-Registry könnte nicht verfügbar sein
         }

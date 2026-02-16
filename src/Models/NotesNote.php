@@ -4,6 +4,7 @@ namespace Platform\Notes\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Symfony\Component\Uid\UuidV7;
 use Platform\Organization\Traits\HasOrganizationContexts;
@@ -31,12 +32,17 @@ class NotesNote extends Model implements HasTimeAncestors, HasKeyResultAncestors
         'team_id',
         'done',
         'done_at',
+        'is_pinned',
+        'tags',
+        'color',
     ];
 
     protected $casts = [
         'uuid' => 'string',
         'done' => 'boolean',
         'done_at' => 'datetime',
+        'is_pinned' => 'boolean',
+        'tags' => 'array',
     ];
 
     protected static function booted(): void
@@ -63,6 +69,22 @@ class NotesNote extends Model implements HasTimeAncestors, HasKeyResultAncestors
     public function folder(): BelongsTo
     {
         return $this->belongsTo(NotesFolder::class, 'folder_id');
+    }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(NotesNoteShare::class, 'note_id');
+    }
+
+    public function getExcerptAttribute(): string
+    {
+        $text = strip_tags($this->content ?? '');
+        return mb_substr($text, 0, 200);
+    }
+
+    public function getTagsListAttribute(): array
+    {
+        return $this->tags ?? [];
     }
 
     /**

@@ -15,16 +15,17 @@ class Folder extends Component
     public NotesFolder $folder;
     public $selectedUserId = null;
     public $selectedRole = 'viewer';
+    public string $viewMode = 'grid';
+    public string $search = '';
 
     public function mount(NotesFolder $notesFolder)
     {
         $this->folder = $notesFolder;
-        
-        // Berechtigung prüfen
+
         $this->authorize('view', $this->folder);
     }
 
-    #[On('updateFolder')] 
+    #[On('updateFolder')]
     public function updateFolder()
     {
         $this->folder->refresh();
@@ -33,10 +34,10 @@ class Folder extends Component
     public function createSubFolder()
     {
         $this->authorize('update', $this->folder);
-        
+
         $user = Auth::user();
         $team = $user->currentTeam;
-        
+
         if (!$team) {
             session()->flash('error', 'Kein Team ausgewählt.');
             return;
@@ -49,7 +50,6 @@ class Folder extends Component
             'parent_id' => $this->folder->id,
         ]);
 
-        // Owner automatisch als folderUser hinzufügen
         $subFolder->folderUsers()->create([
             'user_id' => $user->id,
             'role' => FolderRole::OWNER->value,
@@ -57,17 +57,17 @@ class Folder extends Component
 
         $this->folder->refresh();
         $this->dispatch('updateSidebar');
-        
+
         return $this->redirect(route('notes.folders.show', $subFolder), navigate: true);
     }
 
     public function createNote()
     {
         $this->authorize('update', $this->folder);
-        
+
         $user = Auth::user();
         $team = $user->currentTeam;
-        
+
         if (!$team) {
             session()->flash('error', 'Kein Team ausgewählt.');
             return;
@@ -82,15 +82,40 @@ class Folder extends Component
         ]);
 
         $this->folder->refresh();
-        
+
         return $this->redirect(route('notes.notes.show', $note), navigate: true);
+    }
+
+    public function togglePin($type, $id)
+    {
+        if ($type === 'note') {
+            $item = NotesNote::findOrFail($id);
+            $this->authorize('update', $item);
+            $item->update(['is_pinned' => !$item->is_pinned]);
+        } elseif ($type === 'folder') {
+            $item = NotesFolder::findOrFail($id);
+            $this->authorize('update', $item);
+            $item->update(['is_pinned' => !$item->is_pinned]);
+        }
+        $this->folder->refresh();
+    }
+
+    public function toggleFolderPin()
+    {
+        $this->authorize('update', $this->folder);
+        $this->folder->update(['is_pinned' => !$this->folder->is_pinned]);
+        $this->folder->refresh();
+    }
+
+    public function toggleViewMode()
+    {
+        $this->viewMode = $this->viewMode === 'grid' ? 'list' : 'grid';
     }
 
     public function deleteFolder()
     {
         $this->authorize('delete', $this->folder);
-        
-        // Prüfen, ob Unterordner oder Notizen vorhanden sind
+
         if ($this->folder->children()->count() > 0 || $this->folder->notes()->count() > 0) {
             session()->flash('error', 'Der Ordner kann nicht gelöscht werden, da er noch Unterordner oder Notizen enthält.');
             return;
@@ -111,12 +136,11 @@ class Folder extends Component
     public function updateFolderName($name = null)
     {
         $this->authorize('update', $this->folder);
-        
-        // Wenn kein Name übergeben, aus dem Model nehmen
+
         if ($name === null) {
             $name = $this->folder->name;
         }
-        
+
         $name = trim($name);
         if (empty($name)) {
             session()->flash('error', 'Der Ordner-Name darf nicht leer sein.');
@@ -126,43 +150,65 @@ class Folder extends Component
 
         $this->folder->update(['name' => $name]);
         $this->folder->refresh();
-        
+
         session()->flash('success', 'Ordner wurde umbenannt.');
+    }
+
+    public function addFolderTag($tag)
+    {
+        $this->authorize('update', $this->folder);
+
+        $tag = trim(str_replace(['#', ',', ' '], ['', '', '-'], $tag));
+        if (empty($tag)) return;
+
+        $tags = $this->folder->tags ?? [];
+        if (!in_array($tag, $tags)) {
+            $tags[] = $tag;
+            $this->folder->update(['tags' => $tags]);
+            $this->folder->refresh();
+        }
+    }
+
+    public function removeFolderTag($tag)
+    {
+        $this->authorize('update', $this->folder);
+
+        $tags = $this->folder->tags ?? [];
+        $tags = array_values(array_filter($tags, fn($t) => $t !== $tag));
+        $this->folder->update(['tags' => $tags]);
+        $this->folder->refresh();
     }
 
     public function addFolderUser($userId = null, $role = null)
     {
         $this->authorize('invite', $this->folder);
-        
-        // Wenn keine Parameter, aus Properties nehmen
+
         if ($userId === null) {
             $userId = $this->selectedUserId;
         }
         if ($role === null) {
             $role = $this->selectedRole;
         }
-        
+
         if (!$userId) {
             session()->flash('error', 'Bitte wählen Sie einen User aus.');
             return;
         }
-        
+
         $user = Auth::user();
         $team = $user->currentTeam;
-        
+
         if (!$team) {
             session()->flash('error', 'Kein Team ausgewählt.');
             return;
         }
 
-        // Prüfen, ob User im Team ist
         $targetUser = \Platform\Core\Models\User::find($userId);
         if (!$targetUser || !$team->users()->where('users.id', $userId)->exists()) {
             session()->flash('error', 'Der ausgewählte User ist kein Mitglied des Teams.');
             return;
         }
 
-        // Rolle validieren
         $allowedRoles = [
             FolderRole::ADMIN->value,
             FolderRole::MEMBER->value,
@@ -173,17 +219,14 @@ class Folder extends Component
             return;
         }
 
-        // Prüfen, ob bereits vorhanden
         $existing = NotesFolderUser::where('folder_id', $this->folder->id)
             ->where('user_id', $userId)
             ->first();
 
         if ($existing) {
-            // Rolle aktualisieren
             $existing->update(['role' => $role]);
             session()->flash('success', 'Rolle wurde aktualisiert.');
         } else {
-            // Neuen Eintrag erstellen
             NotesFolderUser::create([
                 'folder_id' => $this->folder->id,
                 'user_id' => $userId,
@@ -192,7 +235,6 @@ class Folder extends Component
             session()->flash('success', 'User wurde zum Ordner hinzugefügt.');
         }
 
-        // Reset
         $this->selectedUserId = null;
         $this->selectedRole = 'viewer';
         $this->folder->refresh();
@@ -201,8 +243,7 @@ class Folder extends Component
     public function removeFolderUser($userId)
     {
         $this->authorize('removeMember', $this->folder);
-        
-        // Owner kann nicht entfernt werden
+
         $folderUser = NotesFolderUser::where('folder_id', $this->folder->id)
             ->where('user_id', $userId)
             ->first();
@@ -219,14 +260,14 @@ class Folder extends Component
 
         $folderUser->delete();
         $this->folder->refresh();
-        
+
         session()->flash('success', 'User wurde aus dem Ordner entfernt.');
     }
 
     public function changeFolderUserRole($userId, $newRole)
     {
         $this->authorize('changeRole', $this->folder);
-        
+
         $folderUser = NotesFolderUser::where('folder_id', $this->folder->id)
             ->where('user_id', $userId)
             ->first();
@@ -236,7 +277,6 @@ class Folder extends Component
             return;
         }
 
-        // Owner-Rolle kann nicht geändert werden (außer durch Ownership-Transfer)
         if ($folderUser->role === FolderRole::OWNER->value && $newRole !== FolderRole::OWNER->value) {
             session()->flash('error', 'Die Owner-Rolle kann nicht geändert werden.');
             return;
@@ -244,7 +284,7 @@ class Folder extends Component
 
         $folderUser->update(['role' => $newRole]);
         $this->folder->refresh();
-        
+
         session()->flash('success', 'Rolle wurde geändert.');
     }
 
@@ -267,7 +307,6 @@ class Folder extends Component
             ],
         ]);
 
-        // Organization-Kontext setzen
         $this->dispatch('organization', [
             'context_type' => get_class($this->folder),
             'context_id' => $this->folder->id,
@@ -276,7 +315,6 @@ class Folder extends Component
             'allow_dimensions' => true,
         ]);
 
-        // KeyResult-Kontext setzen
         $this->dispatch('keyresult', [
             'context_type' => get_class($this->folder),
             'context_id' => $this->folder->id,
@@ -291,13 +329,12 @@ class Folder extends Component
 
         $folder = $this->folder;
         $path = [];
-        
-        // Pfad zum Root sammeln
+
         while ($folder) {
             array_unshift($path, $folder);
             $folder = $folder->parent;
         }
-        
+
         foreach ($path as $f) {
             $breadcrumbs[] = [
                 'name' => $f->name,
@@ -312,12 +349,11 @@ class Folder extends Component
     {
         $user = Auth::user();
         $team = $user->currentTeam;
-        
+
         if (!$team) {
             return collect();
         }
 
-        // Alle Root-Ordner laden
         $rootFolders = NotesFolder::where('team_id', $team->id)
             ->whereNull('parent_id')
             ->orderBy('name')
@@ -329,7 +365,7 @@ class Folder extends Component
     protected function buildFolderTree($folders, $activeFolderId, $level = 0)
     {
         $tree = collect();
-        
+
         foreach ($folders as $folder) {
             $tree->push([
                 'folder' => $folder,
@@ -337,14 +373,13 @@ class Folder extends Component
                 'isActive' => $folder->id === $activeFolderId,
                 'hasChildren' => $folder->children()->count() > 0,
             ]);
-            
-            // Rekursiv Unterordner hinzufügen, wenn aktiv oder wenn Unterordner aktiv ist
+
             if ($folder->id === $activeFolderId || $this->hasActiveChild($folder, $activeFolderId)) {
                 $children = $folder->children()->orderBy('name')->get();
                 $tree = $tree->merge($this->buildFolderTree($children, $activeFolderId, $level + 1));
             }
         }
-        
+
         return $tree;
     }
 
@@ -365,19 +400,27 @@ class Folder extends Component
     {
         $user = Auth::user();
         $team = $user->currentTeam;
-        
-        // Unterordner und Notizen für diesen Ordner laden
-        $subFolders = $this->folder->children;
-        $notes = $this->folder->notes;
 
-        // Ordner-User laden
+        $subFoldersQuery = $this->folder->children()->orderByDesc('is_pinned')->orderBy('name');
+        $notesQuery = $this->folder->notes()->orderByDesc('is_pinned')->orderByDesc('updated_at');
+
+        if ($this->search) {
+            $searchTerm = '%' . $this->search . '%';
+            $notesQuery->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', $searchTerm)
+                  ->orWhere('content', 'like', $searchTerm);
+            });
+            $subFoldersQuery->where('name', 'like', $searchTerm);
+        }
+
+        $subFolders = $subFoldersQuery->get();
+        $notes = $notesQuery->get();
+
         $folderUsers = $this->folder->folderUsers()->with('user')->get();
-        
-        // Owner hinzufügen, falls nicht bereits in folderUsers
+
         if ($this->folder->user_id && !$folderUsers->contains('user_id', $this->folder->user_id)) {
             $ownerUser = \Platform\Core\Models\User::find($this->folder->user_id);
             if ($ownerUser) {
-                // Temporäres Objekt für Owner erstellen
                 $ownerFolderUser = new NotesFolderUser([
                     'folder_id' => $this->folder->id,
                     'user_id' => $ownerUser->id,
@@ -387,8 +430,7 @@ class Folder extends Component
                 $folderUsers->prepend($ownerFolderUser);
             }
         }
-        
-        // Team-User für Auswahl laden
+
         $teamUsers = $team ? $team->users()->orderBy('name')->get() : collect();
 
         return view('notes::livewire.folder', [

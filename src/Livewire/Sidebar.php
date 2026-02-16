@@ -5,19 +5,18 @@ namespace Platform\Notes\Livewire;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Platform\Notes\Models\NotesFolder;
+use Platform\Notes\Models\NotesNote;
 use Livewire\Attributes\On;
 
 class Sidebar extends Component
 {
     public bool $showAllFolders = false;
     public array $expandedFolders = [];
+    public string $sidebarSearch = '';
 
     public function mount()
     {
-        // Zustand aus localStorage laden (wird vom Frontend gesetzt)
-        $this->showAllFolders = false; // Default-Wert, wird vom Frontend überschrieben
-        
-        // Standardmäßig alle Ordner als erweitert markieren
+        $this->showAllFolders = false;
         $this->initializeExpandedFolders();
     }
 
@@ -30,21 +29,19 @@ class Sidebar extends Component
             return;
         }
 
-        // Alle Ordner laden, auf die der User Zugriff hat
         $allFolders = NotesFolder::where('team_id', $teamId)
             ->get()
             ->filter(function ($folder) use ($user) {
                 return $user->can('view', $folder);
             });
 
-        // Alle Ordner-IDs als erweitert markieren
         $this->expandedFolders = $allFolders->pluck('id')->toArray();
     }
 
-    #[On('updateSidebar')] 
+    #[On('updateSidebar')]
     public function updateSidebar()
     {
-        // Wird später implementiert
+        // Re-render triggers fresh data
     }
 
     public function toggleShowAllFolders()
@@ -56,31 +53,46 @@ class Sidebar extends Component
     {
         $user = Auth::user();
         $team = $user->currentTeam;
-        
+
         if (!$team) {
             return;
         }
 
-        // Policy-Berechtigung prüfen
         $this->authorize('create', NotesFolder::class);
 
-        // Neuen Ordner anlegen
         $folder = NotesFolder::create([
             'name' => 'Neuer Ordner',
             'user_id' => $user->id,
             'team_id' => $team->id,
         ]);
 
-        // Owner automatisch als folderUser hinzufügen
         $folder->folderUsers()->create([
             'user_id' => $user->id,
             'role' => \Platform\Notes\Enums\FolderRole::OWNER->value,
         ]);
 
         $this->dispatch('updateSidebar');
-        
-        // Zur Ordner-Ansicht weiterleiten
+
         return $this->redirect(route('notes.folders.show', $folder), navigate: true);
+    }
+
+    public function createQuickNote()
+    {
+        $user = Auth::user();
+        $team = $user->currentTeam;
+
+        if (!$team) {
+            return;
+        }
+
+        $note = NotesNote::create([
+            'name' => 'Neue Notiz',
+            'content' => '',
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+        ]);
+
+        return $this->redirect(route('notes.notes.show', $note), navigate: true);
     }
 
     public function getFolderTree()
@@ -92,13 +104,12 @@ class Sidebar extends Component
             return collect();
         }
 
-        // Alle Root-Ordner des Teams laden
         $allRootFolders = NotesFolder::where('team_id', $teamId)
             ->whereNull('parent_id')
+            ->orderByDesc('is_pinned')
             ->orderBy('name')
             ->get();
 
-        // Nur Ordner filtern, auf die der User Zugriff hat
         $rootFolders = $allRootFolders->filter(function ($folder) use ($user) {
             return $user->can('view', $folder);
         });
@@ -113,8 +124,6 @@ class Sidebar extends Component
         } else {
             $this->expandedFolders[] = $folderId;
         }
-        
-        // In localStorage speichern (wird vom Frontend übernommen)
     }
 
     public function isFolderExpanded($folderId): bool
@@ -130,16 +139,23 @@ class Sidebar extends Component
 
         $user = auth()->user();
         $tree = collect();
-        
+
         foreach ($folders as $folder) {
-            // Nur Ordner hinzufügen, auf die der User Zugriff hat
             if (!$user->can('view', $folder)) {
                 continue;
             }
 
-            // Prüfen ob Parent-Ordner erweitert ist (außer bei Root-Level)
             if ($level > 0 && !$parentExpanded) {
                 continue;
+            }
+
+            // Filter by search
+            if ($this->sidebarSearch) {
+                $matchesSearch = str_contains(mb_strtolower($folder->name), mb_strtolower($this->sidebarSearch));
+                $hasMatchingChild = $this->hasMatchingChild($folder, $this->sidebarSearch);
+                if (!$matchesSearch && !$hasMatchingChild) {
+                    continue;
+                }
             }
 
             $hasChildren = $folder->children()->exists();
@@ -151,15 +167,28 @@ class Sidebar extends Component
                 'hasChildren' => $hasChildren,
                 'isExpanded' => $isExpanded,
             ]);
-            
-            // Rekursiv Unterordner hinzufügen (nur wenn erweitert)
+
             if ($hasChildren && $isExpanded && $level < $maxLevel) {
-                $children = $folder->children()->orderBy('name')->get();
+                $children = $folder->children()->orderByDesc('is_pinned')->orderBy('name')->get();
                 $tree = $tree->merge($this->buildFolderTree($children, $level + 1, $maxLevel, $isExpanded));
             }
         }
-        
+
         return $tree;
+    }
+
+    protected function hasMatchingChild($folder, $search): bool
+    {
+        $search = mb_strtolower($search);
+        foreach ($folder->children as $child) {
+            if (str_contains(mb_strtolower($child->name), $search)) {
+                return true;
+            }
+            if ($this->hasMatchingChild($child, $search)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function render()
@@ -173,36 +202,48 @@ class Sidebar extends Component
                 'hasMoreFolders' => false,
                 'allFoldersCount' => 0,
                 'folderTree' => collect(),
+                'pinnedNotes' => collect(),
+                'recentNotes' => collect(),
             ]);
         }
 
-        // Alle Root-Ordner des Teams (ohne Parent)
         $allFolders = NotesFolder::query()
             ->where('team_id', $teamId)
             ->whereNull('parent_id')
+            ->orderByDesc('is_pinned')
             ->orderBy('name')
             ->get();
 
-        // Ordner filtern: nur solche, auf die der User Zugriff hat
         $foldersToShow = $allFolders->filter(function ($folder) use ($user) {
             return $user->can('view', $folder);
         });
 
-        $hasMoreFolders = false; // Später: wenn Filter-Logik implementiert wird
-
-        // Ordner-Baum für erweiterte Navigation
+        $hasMoreFolders = false;
         $folderTree = $this->getFolderTree();
 
-        // Root-Ordner mit Children-Info laden für die Sidebar
         $rootFoldersWithChildren = NotesFolder::query()
             ->where('team_id', $teamId)
             ->whereNull('parent_id')
             ->with('children')
+            ->orderByDesc('is_pinned')
             ->orderBy('name')
             ->get()
             ->filter(function ($folder) use ($user) {
                 return $user->can('view', $folder);
             });
+
+        // Pinned notes for quick access
+        $pinnedNotes = NotesNote::where('team_id', $teamId)
+            ->where('is_pinned', true)
+            ->orderBy('name')
+            ->take(10)
+            ->get();
+
+        // Recent notes
+        $recentNotes = NotesNote::where('team_id', $teamId)
+            ->orderByDesc('updated_at')
+            ->take(5)
+            ->get();
 
         return view('notes::livewire.sidebar', [
             'folders' => $foldersToShow,
@@ -210,6 +251,8 @@ class Sidebar extends Component
             'allFoldersCount' => $allFolders->count(),
             'folderTree' => $folderTree,
             'rootFolders' => $rootFoldersWithChildren,
+            'pinnedNotes' => $pinnedNotes,
+            'recentNotes' => $recentNotes,
         ]);
     }
 }

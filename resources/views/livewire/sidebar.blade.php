@@ -1,14 +1,11 @@
-{{-- Notes Sidebar - Struktur nach Brands-Vorbild --}}
-<div 
+{{-- Notes Sidebar --}}
+<div
     x-data="{
         init() {
-            // Zustand aus localStorage laden beim Initialisieren
             const savedState = localStorage.getItem('notes.showAllFolders');
             if (savedState !== null) {
                 @this.set('showAllFolders', savedState === 'true');
             }
-            
-            // Erweiterte Ordner aus localStorage laden (falls vorhanden, sonst Standard: alle erweitert)
             const expandedState = localStorage.getItem('notes.expandedFolders');
             if (expandedState) {
                 try {
@@ -16,19 +13,32 @@
                     if (Array.isArray(expanded) && expanded.length > 0) {
                         @this.set('expandedFolders', expanded);
                     }
-                } catch (e) {
-                    console.error('Fehler beim Laden der erweiterten Ordner:', e);
-                }
+                } catch (e) {}
             }
         }
     }"
 >
-    {{-- Modul Header --}}
+    {{-- Module Header --}}
     <div x-show="!collapsed" class="p-2 text-xs italic text-[var(--ui-secondary)] uppercase border-b border-[var(--ui-border)] mb-1">
         Notizen
     </div>
-    
-    {{-- Abschnitt: Allgemein (über UI-Komponenten) --}}
+
+    {{-- Quick Search --}}
+    <div x-show="!collapsed" class="px-2 py-1.5">
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                @svg('heroicon-o-magnifying-glass', 'w-3 h-3 text-[var(--ui-muted)]')
+            </div>
+            <input
+                type="text"
+                wire:model.live.debounce.300ms="sidebarSearch"
+                placeholder="Suchen..."
+                class="w-full pl-7 pr-2 py-1 text-xs rounded-md border border-[var(--ui-border)]/50 bg-[var(--ui-muted-5)] text-[var(--ui-secondary)] placeholder:text-[var(--ui-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]/30 focus:border-[var(--ui-primary)]"
+            />
+        </div>
+    </div>
+
+    {{-- Navigation --}}
     <x-ui-sidebar-list label="Allgemein">
         <x-ui-sidebar-item :href="route('notes.dashboard')">
             @svg('heroicon-o-home', 'w-3.5 h-3.5 text-[var(--ui-secondary)]')
@@ -36,15 +46,19 @@
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
-    {{-- Neuer Ordner --}}
+    {{-- Quick Actions --}}
     <x-ui-sidebar-list>
+        <x-ui-sidebar-item wire:click="createQuickNote">
+            @svg('heroicon-o-document-plus', 'w-3.5 h-3.5 text-[var(--ui-secondary)]')
+            <span class="ml-1.5 text-xs">Neue Notiz</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item wire:click="createFolder">
-            @svg('heroicon-o-plus-circle', 'w-3.5 h-3.5 text-[var(--ui-secondary)]')
+            @svg('heroicon-o-folder-plus', 'w-3.5 h-3.5 text-[var(--ui-secondary)]')
             <span class="ml-1.5 text-xs">Neuer Ordner</span>
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
-    {{-- Collapsed: Icons-only für Allgemein --}}
+    {{-- Collapsed Icons --}}
     <div x-show="collapsed" class="px-2 py-2 border-b border-[var(--ui-border)]">
         <div class="flex flex-col gap-2">
             <a href="{{ route('notes.dashboard') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
@@ -53,12 +67,37 @@
         </div>
     </div>
     <div x-show="collapsed" class="px-2 py-2 border-b border-[var(--ui-border)]">
-        <button type="button" wire:click="createFolder" class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
-            @svg('heroicon-o-plus-circle', 'w-5 h-5')
+        <button type="button" wire:click="createQuickNote" class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)] w-full">
+            @svg('heroicon-o-document-plus', 'w-5 h-5')
+        </button>
+        <button type="button" wire:click="createFolder" class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)] w-full mt-1">
+            @svg('heroicon-o-folder-plus', 'w-5 h-5')
         </button>
     </div>
 
-    {{-- Abschnitt: Ordner-Baum (Datei-Explorer-ähnlich) --}}
+    {{-- Pinned Notes --}}
+    @if($pinnedNotes->count() > 0)
+        <div x-show="!collapsed" class="px-1 py-1 border-b border-[var(--ui-border)]">
+            <div class="px-1 pb-1 flex items-center gap-1">
+                @svg('heroicon-s-star', 'w-3 h-3 text-amber-400')
+                <span class="text-[10px] uppercase tracking-wide text-[var(--ui-muted)]">Angepinnt</span>
+            </div>
+            <div class="flex flex-col gap-0.5">
+                @foreach($pinnedNotes as $pinnedNote)
+                    <a
+                        href="{{ route('notes.notes.show', $pinnedNote) }}"
+                        wire:navigate
+                        class="flex items-center gap-1.5 py-1 px-1.5 rounded-md hover:bg-[var(--ui-muted-5)] transition-colors"
+                    >
+                        @svg('heroicon-o-document-text', 'w-3 h-3 flex-shrink-0 text-[var(--ui-primary)]')
+                        <span class="text-xs truncate">{{ $pinnedNote->name }}</span>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- Folder Tree --}}
     <div>
         <div class="mt-1" x-show="!collapsed">
             @if($rootFolders->isNotEmpty())
@@ -74,7 +113,6 @@
                     </div>
                 </div>
             @elseif($folders->isNotEmpty())
-                {{-- Fallback: Nur Root-Ordner anzeigen --}}
                 <x-ui-sidebar-list :label="'Ordner' . ($showAllFolders ? ' (' . $allFoldersCount . ')' : '')">
                     @foreach($folders as $folder)
                         <x-ui-sidebar-item :href="route('notes.folders.show', ['notesFolder' => $folder])">
@@ -87,11 +125,10 @@
                 </x-ui-sidebar-list>
             @endif
 
-            {{-- Button zum Ein-/Ausblenden aller Ordner --}}
             @if($hasMoreFolders)
                 <div class="px-3 py-2">
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         wire:click="toggleShowAllFolders"
                         x-on:click="localStorage.setItem('notes.showAllFolders', (!$wire.showAllFolders).toString())"
                         class="flex items-center gap-2 text-xs text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
@@ -107,7 +144,6 @@
                 </div>
             @endif
 
-            {{-- Keine Ordner --}}
             @if($folders->isEmpty() && $folderTree->isEmpty())
                 <div class="px-3 py-1 text-xs text-[var(--ui-muted)]">
                     @if($showAllFolders)
@@ -119,4 +155,23 @@
             @endif
         </div>
     </div>
+
+    {{-- Recent Notes --}}
+    @if($recentNotes->count() > 0)
+        <div x-show="!collapsed" class="px-1 py-1 border-b border-[var(--ui-border)]">
+            <div class="px-1 pb-1 text-[10px] uppercase tracking-wide text-[var(--ui-muted)]">Zuletzt bearbeitet</div>
+            <div class="flex flex-col gap-0.5">
+                @foreach($recentNotes as $recentNote)
+                    <a
+                        href="{{ route('notes.notes.show', $recentNote) }}"
+                        wire:navigate
+                        class="flex items-center gap-1.5 py-1 px-1.5 rounded-md hover:bg-[var(--ui-muted-5)] transition-colors"
+                    >
+                        @svg('heroicon-o-document-text', 'w-3 h-3 flex-shrink-0 text-[var(--ui-muted)]')
+                        <span class="text-xs truncate text-[var(--ui-muted)]">{{ $recentNote->name }}</span>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    @endif
 </div>

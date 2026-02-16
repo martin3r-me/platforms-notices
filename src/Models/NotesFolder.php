@@ -32,12 +32,17 @@ class NotesFolder extends Model implements HasTimeAncestors, HasKeyResultAncesto
         'team_id',
         'done',
         'done_at',
+        'is_pinned',
+        'tags',
+        'color',
     ];
 
     protected $casts = [
         'uuid' => 'string',
         'done' => 'boolean',
         'done_at' => 'datetime',
+        'is_pinned' => 'boolean',
+        'tags' => 'array',
     ];
 
     protected static function booted(): void

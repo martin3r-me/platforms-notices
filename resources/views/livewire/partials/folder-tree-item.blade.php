@@ -1,8 +1,8 @@
 @php
     $hasChildren = $folder->children()->exists();
     $isExpanded = in_array($folder->id, $this->expandedFolders);
-    // Erst ab Ebene 2 einrücken, Ebene 0 und 1 bündig
     $paddingLeft = $level >= 2 ? (($level - 2) * 0.5) + 0.25 : 0;
+    $isPinned = $folder->is_pinned ?? false;
 @endphp
 
 <div class="folder-item" style="padding-left: {{ $paddingLeft }}rem;">
@@ -29,30 +29,35 @@
             <span class="w-3 mr-0.5"></span>
         @endif
 
-        {{-- Ordner-Icon und Name --}}
-        <a 
+        {{-- Folder Icon and Name --}}
+        <a
             href="{{ route('notes.folders.show', ['notesFolder' => $folder]) }}"
             wire:navigate
             class="flex items-center flex-1 min-w-0 py-0.5 px-0.5 rounded-md hover:bg-[var(--ui-muted-5)] transition-colors"
         >
-            @if($isExpanded)
+            @if($isPinned)
+                @svg('heroicon-o-folder', 'w-3.5 h-3.5 flex-shrink-0 text-[var(--ui-primary)]')
+            @elseif($isExpanded)
                 @svg('heroicon-o-folder-open', 'w-3.5 h-3.5 flex-shrink-0 text-[var(--ui-secondary)]')
             @else
                 @svg('heroicon-o-folder', 'w-3.5 h-3.5 flex-shrink-0 text-[var(--ui-secondary)]')
             @endif
             <div class="flex-1 min-w-0 ml-0.5">
-                <div class="truncate text-xs font-medium leading-tight">{{ $folder->name }}</div>
-                @if($folder->description)
-                    <div class="truncate text-[10px] text-[var(--ui-muted)] leading-tight mt-0.5">{{ mb_substr($folder->description, 0, 30) }}...</div>
-                @endif
+                <div class="flex items-center gap-1">
+                    <span class="truncate text-xs font-medium leading-tight">{{ $folder->name }}</span>
+                    @if($isPinned)
+                        @svg('heroicon-s-star', 'w-2.5 h-2.5 flex-shrink-0 text-amber-400')
+                    @endif
+                </div>
             </div>
         </a>
     </div>
 
-    {{-- Unterordner (rekursiv) --}}
+    {{-- Children (recursive) --}}
     @if($hasChildren && $isExpanded)
         @php
             $children = $folder->children()
+                ->orderByDesc('is_pinned')
                 ->orderBy('name')
                 ->get()
                 ->filter(function($child) {

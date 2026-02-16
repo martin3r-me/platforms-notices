@@ -9,6 +9,11 @@ use Platform\Notes\Models\NotesNote;
 
 class Dashboard extends Component
 {
+    public string $search = '';
+    public string $viewMode = 'grid';
+    public string $filterTag = '';
+    public bool $showPinnedOnly = false;
+
     public function rendered()
     {
         $this->dispatch('comms', [
@@ -28,18 +33,16 @@ class Dashboard extends Component
     public function createFolder()
     {
         $user = Auth::user();
-        
-        // Policy-Berechtigung prüfen
+
         $this->authorize('create', NotesFolder::class);
 
         $team = $user->currentTeam;
-        
+
         if (!$team) {
             session()->flash('error', 'Kein Team ausgewählt.');
             return;
         }
 
-        // Neuen Ordner anlegen
         $folder = NotesFolder::create([
             'name' => 'Neuer Ordner',
             'user_id' => $user->id,
@@ -47,71 +50,129 @@ class Dashboard extends Component
         ]);
 
         $this->dispatch('updateSidebar');
-        
-        // Zur Ordner-Ansicht weiterleiten
+
         return $this->redirect(route('notes.folders.show', $folder), navigate: true);
+    }
+
+    public function createQuickNote()
+    {
+        $user = Auth::user();
+        $team = $user->currentTeam;
+
+        if (!$team) {
+            session()->flash('error', 'Kein Team ausgewählt.');
+            return;
+        }
+
+        $note = NotesNote::create([
+            'name' => 'Neue Notiz',
+            'content' => '',
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+        ]);
+
+        return $this->redirect(route('notes.notes.show', $note), navigate: true);
+    }
+
+    public function togglePin($type, $id)
+    {
+        $user = Auth::user();
+
+        if ($type === 'note') {
+            $item = NotesNote::where('team_id', $user->currentTeam->id)->findOrFail($id);
+            $this->authorize('update', $item);
+            $item->update(['is_pinned' => !$item->is_pinned]);
+        } else {
+            $item = NotesFolder::where('team_id', $user->currentTeam->id)->findOrFail($id);
+            $this->authorize('update', $item);
+            $item->update(['is_pinned' => !$item->is_pinned]);
+        }
+    }
+
+    public function toggleViewMode()
+    {
+        $this->viewMode = $this->viewMode === 'grid' ? 'list' : 'grid';
+    }
+
+    public function setFilterTag($tag)
+    {
+        $this->filterTag = $this->filterTag === $tag ? '' : $tag;
     }
 
     public function render()
     {
         $user = Auth::user();
         $team = $user->currentTeam;
-        
-        // === ORDNER (nur Team-Ordner, ohne Parent = Root-Ordner) ===
-        $folders = NotesFolder::where('team_id', $team->id)
+
+        $foldersQuery = NotesFolder::where('team_id', $team->id)
             ->whereNull('parent_id')
-            ->orderBy('name')
-            ->get();
-        
-        $activeFolders = $folders->filter(function($folder) {
-            return $folder->done === null || $folder->done === false;
-        })->count();
-        $totalFolders = $folders->count();
+            ->orderByDesc('is_pinned')
+            ->orderBy('name');
 
-        // === NOTIZEN (nur Team-Notizen ohne Ordner) ===
-        $notes = NotesNote::where('team_id', $team->id)
-            ->whereNull('folder_id')
-            ->orderBy('name')
-            ->get();
-        
-        $activeNotes = $notes->filter(function($note) {
-            return $note->done === null || $note->done === false;
-        })->count();
-        $totalNotes = $notes->count();
+        $notesQuery = NotesNote::where('team_id', $team->id)
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('updated_at');
 
-        // === ORDNER-ÜBERSICHT (nur aktive Root-Ordner) ===
-        $activeFoldersList = $folders->filter(function($folder) {
-            return $folder->done === null || $folder->done === false;
-        })
-        ->map(function ($folder) {
-            return [
-                'id' => $folder->id,
-                'name' => $folder->name,
-                'subtitle' => $folder->description ? mb_substr($folder->description, 0, 50) . '...' : '',
-            ];
-        })
-        ->take(5);
+        if ($this->search) {
+            $searchTerm = '%' . $this->search . '%';
+            $notesQuery->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', $searchTerm)
+                  ->orWhere('content', 'like', $searchTerm);
+            });
+            $foldersQuery->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', $searchTerm)
+                  ->orWhere('description', 'like', $searchTerm);
+            });
+        }
 
-        // === NOTIZEN-ÜBERSICHT (nur aktive Notizen ohne Ordner) ===
-        $activeNotesList = $notes->filter(function($note) {
-            return $note->done === null || $note->done === false;
-        })
-        ->map(function ($note) {
-            return [
-                'id' => $note->id,
-                'name' => $note->name,
-                'subtitle' => $note->content ? mb_substr(strip_tags($note->content), 0, 50) . '...' : '',
-            ];
-        })
-        ->take(5);
+        if ($this->filterTag) {
+            $tag = $this->filterTag;
+            $notesQuery->whereJsonContains('tags', $tag);
+            $foldersQuery->whereJsonContains('tags', $tag);
+        }
+
+        if ($this->showPinnedOnly) {
+            $notesQuery->where('is_pinned', true);
+            $foldersQuery->where('is_pinned', true);
+        }
+
+        $folders = $foldersQuery->get();
+        $allNotes = $notesQuery->get();
+
+        $totalFolders = NotesFolder::where('team_id', $team->id)->whereNull('parent_id')->count();
+        $totalNotes = NotesNote::where('team_id', $team->id)->count();
+        $activeFolders = $folders->where('done', false)->count();
+        $activeNotes = $allNotes->where('done', false)->count();
+
+        $pinnedNotes = $allNotes->where('is_pinned', true);
+        $pinnedFolders = $folders->where('is_pinned', true);
+        $recentNotes = $allNotes->where('is_pinned', false)->take(20);
+
+        // Collect all tags
+        $allTags = collect();
+        $allNotes->each(function ($note) use ($allTags) {
+            foreach ($note->tags ?? [] as $tag) {
+                $allTags->push($tag);
+            }
+        });
+        $folders->each(function ($folder) use ($allTags) {
+            foreach ($folder->tags ?? [] as $tag) {
+                $allTags->push($tag);
+            }
+        });
+        $uniqueTags = $allTags->countBy()->sortDesc()->take(20);
 
         return view('notes::livewire.dashboard', [
             'activeFolders' => $activeFolders,
             'totalFolders' => $totalFolders,
-            'activeFoldersList' => $activeFoldersList,
             'activeNotes' => $activeNotes,
             'totalNotes' => $totalNotes,
-            'activeNotesList' => $activeNotesList,
+            'folders' => $folders,
+            'allNotes' => $allNotes,
+            'pinnedNotes' => $pinnedNotes,
+            'pinnedFolders' => $pinnedFolders,
+            'recentNotes' => $recentNotes,
+            'uniqueTags' => $uniqueTags,
         ])->layout('platform::layouts.app');
     }
 }

@@ -14,9 +14,12 @@ class NotePolicy
      */
     public function view(User $user, NotesNote $note): bool
     {
-        // User muss im selben Team sein
+        // User muss im selben Team sein (currentTeam oder Team-Mitgliedschaft)
         if ($note->team_id !== $user->currentTeam?->id) {
-            return false;
+            // Fallback: Team-Mitgliedschaft direkt prüfen (LLM/MCP-Kontext)
+            if (!$user->teams()->where('teams.id', $note->team_id)->exists()) {
+                return false;
+            }
         }
 
         // Wenn Notiz in einem Ordner ist, Ordner-Berechtigung prüfen
@@ -35,9 +38,12 @@ class NotePolicy
      */
     public function update(User $user, NotesNote $note): bool
     {
-        // User muss im selben Team sein
+        // User muss im selben Team sein (currentTeam oder Team-Mitgliedschaft)
         if ($note->team_id !== $user->currentTeam?->id) {
-            return false;
+            // Fallback: Team-Mitgliedschaft direkt prüfen (LLM/MCP-Kontext)
+            if (!$user->teams()->where('teams.id', $note->team_id)->exists()) {
+                return false;
+            }
         }
 
         // Wenn Notiz in einem Ordner ist, Ordner-Schreibberechtigung prüfen
@@ -71,9 +77,12 @@ class NotePolicy
             return true;
         }
 
-        // User muss im selben Team sein
+        // User muss im selben Team sein (currentTeam oder Team-Mitgliedschaft)
         if ($note->team_id !== $user->currentTeam?->id) {
-            return false;
+            // Fallback: Team-Mitgliedschaft direkt prüfen (LLM/MCP-Kontext)
+            if (!$user->teams()->where('teams.id', $note->team_id)->exists()) {
+                return false;
+            }
         }
 
         // Wenn Notiz in einem Ordner ist, Ordner-Admin-Berechtigung prüfen

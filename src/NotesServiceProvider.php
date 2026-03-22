@@ -2,6 +2,7 @@
 
 namespace Platform\Notes;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Gate;
@@ -33,6 +34,10 @@ class NotesServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Relation::morphMap([
+            'notes_note' => \Platform\Notes\Models\NotesNote::class,
+        ]);
+
         // Config veröffentlichen & zusammenführen (MUSS VOR registerModule sein!)
         $this->publishes([
             __DIR__.'/../config/notes.php' => config_path('notes.php'),

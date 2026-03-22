@@ -8,14 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Symfony\Component\Uid\UuidV7;
 use Platform\Organization\Traits\HasOrganizationContexts;
-use Platform\Core\Contracts\HasTimeAncestors;
 use Platform\Core\Contracts\HasKeyResultAncestors;
 use Platform\Core\Contracts\HasDisplayName;
 
 /**
  * @ai.description Notiz mit Markdown-Inhalt.
  */
-class NotesNote extends Model implements HasTimeAncestors, HasKeyResultAncestors, HasDisplayName
+class NotesNote extends Model implements HasKeyResultAncestors, HasDisplayName
 {
     use HasOrganizationContexts;
     use SoftDeletes;
@@ -85,14 +84,6 @@ class NotesNote extends Model implements HasTimeAncestors, HasKeyResultAncestors
     public function getTagsListAttribute(): array
     {
         return $this->tags ?? [];
-    }
-
-    /**
-     * Gibt alle Vorfahren-Kontexte für die Zeitkaskade zurück.
-     */
-    public function timeAncestors(): array
-    {
-        return [];
     }
 
     /**

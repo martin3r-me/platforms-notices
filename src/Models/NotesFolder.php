@@ -8,14 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Symfony\Component\Uid\UuidV7;
 use Platform\Organization\Traits\HasOrganizationContexts;
-use Platform\Core\Contracts\HasTimeAncestors;
 use Platform\Core\Contracts\HasKeyResultAncestors;
 use Platform\Core\Contracts\HasDisplayName;
 
 /**
  * @ai.description Ordner für Notizen mit Unterstützung für Unterordner.
  */
-class NotesFolder extends Model implements HasTimeAncestors, HasKeyResultAncestors, HasDisplayName
+class NotesFolder extends Model implements HasKeyResultAncestors, HasDisplayName
 {
     use HasOrganizationContexts;
     use SoftDeletes;
@@ -117,14 +116,6 @@ class NotesFolder extends Model implements HasTimeAncestors, HasKeyResultAncesto
         }
 
         return null;
-    }
-
-    /**
-     * Gibt alle Vorfahren-Kontexte für die Zeitkaskade zurück.
-     */
-    public function timeAncestors(): array
-    {
-        return [];
     }
 
     /**

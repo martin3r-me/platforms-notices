@@ -15,7 +15,7 @@ class NotesEntityLinkProvider implements EntityLinkProvider
     public function linkTypeConfig(): array
     {
         return [
-            'notes_note' => ['label' => 'Notizen', 'icon' => 'document-text', 'route' => null],
+            'notes_note' => ['label' => 'Notizen', 'singular' => 'Notiz', 'icon' => 'document-text', 'route' => null],
         ];
     }
 
@@ -43,6 +43,11 @@ class NotesEntityLinkProvider implements EntityLinkProvider
     }
 
     public function timeTrackableCascades(): array
+    {
+        return [];
+    }
+
+    public function activityChildren(string $morphAlias, array $linkableIds): array
     {
         return [];
     }

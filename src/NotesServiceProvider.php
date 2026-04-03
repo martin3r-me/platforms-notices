@@ -38,6 +38,14 @@ class NotesServiceProvider extends ServiceProvider
             'notes_note' => \Platform\Notes\Models\NotesNote::class,
         ]);
 
+        // EntityLinkProvider registrieren (loose Kopplung mit Organization-Modul)
+        try {
+            resolve(\Platform\Organization\Services\EntityLinkRegistry::class)
+                ->register(new \Platform\Notes\Organization\NotesEntityLinkProvider());
+        } catch (\Throwable $e) {
+            // Organization-Modul nicht geladen
+        }
+
         // Config veröffentlichen & zusammenführen (MUSS VOR registerModule sein!)
         $this->publishes([
             __DIR__.'/../config/notes.php' => config_path('notes.php'),
@@ -54,6 +62,7 @@ class NotesServiceProvider extends ServiceProvider
             PlatformCore::registerModule([
                 'key'        => 'notes',
                 'title'      => 'Notizen',
+                'group'      => 'content',
                 'routing'    => config('notes.routing'),
                 'guard'      => config('notes.guard'),
                 'navigation' => config('notes.navigation'),

@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Symfony\Component\Uid\UuidV7;
-use Platform\Organization\Traits\HasOrganizationContexts;
 use Platform\Core\Contracts\HasKeyResultAncestors;
 use Platform\Core\Contracts\HasDisplayName;
 
@@ -16,7 +15,6 @@ use Platform\Core\Contracts\HasDisplayName;
  */
 class NotesFolder extends Model implements HasKeyResultAncestors, HasDisplayName
 {
-    use HasOrganizationContexts;
     use SoftDeletes;
 
     protected $table = 'notes_folders';

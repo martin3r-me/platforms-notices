@@ -4,7 +4,6 @@ namespace Platform\Notes;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -57,7 +56,7 @@ class NotesServiceProvider extends ServiceProvider
         if (
             config()->has('notes.routing') &&
             config()->has('notes.navigation') &&
-            Schema::hasTable('modules')
+            PlatformCore::modulesTableExists()
         ) {
             PlatformCore::registerModule([
                 'key'        => 'notes',
